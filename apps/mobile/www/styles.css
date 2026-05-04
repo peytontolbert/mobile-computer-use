@@ -1,0 +1,160 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #0f1418;
+  color: #edf4f2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #0f1418;
+}
+
+main {
+  min-height: 100vh;
+  display: grid;
+  align-items: center;
+  padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+}
+
+.panel {
+  width: min(100%, 520px);
+  margin: 0 auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  aspect-ratio: 1;
+  border: 1px solid #37505d;
+  border-radius: 8px;
+  background: #172128;
+  color: #9ed8ff;
+  font-weight: 800;
+}
+
+h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+p {
+  margin: 5px 0 0;
+  color: #aebcc4;
+  line-height: 1.45;
+}
+
+form {
+  display: grid;
+  gap: 8px;
+}
+
+label {
+  color: #c8d4da;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+input,
+button {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 8px;
+  border: 1px solid #33434c;
+  font: inherit;
+}
+
+input {
+  padding: 0 12px;
+  background: #172128;
+  color: #edf4f2;
+}
+
+button {
+  margin-top: 8px;
+  border: 0;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+button:disabled {
+  opacity: 0.58;
+}
+
+button.secondary {
+  background: #26343d;
+  color: #edf4f2;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.status {
+  min-height: 44px;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #2b3942;
+  border-radius: 8px;
+  background: #151d23;
+}
+
+.status[data-mode="ok"] {
+  border-color: #2d6d49;
+  color: #bdf5d0;
+}
+
+.status[data-mode="error"] {
+  border-color: #833941;
+  color: #ffd0d5;
+}
+
+.details {
+  margin: 12px 0 0;
+  padding: 12px;
+  border: 1px solid #2b3942;
+  border-radius: 8px;
+  background: #11191f;
+}
+
+dt {
+  margin-top: 10px;
+  color: #8fa2ad;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+dt:first-child {
+  margin-top: 0;
+}
+
+dd {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
+.hidden {
+  display: none !important;
+}

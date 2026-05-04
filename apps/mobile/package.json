@@ -1,0 +1,24 @@
+{
+  "name": "@mobile-computer-use/native-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "iOS and Android shell for Mobile Computer Use.",
+  "type": "module",
+  "scripts": {
+    "check": "node --check www/app.js",
+    "sync": "cap sync",
+    "add:android": "cap add android",
+    "add:ios": "cap add ios",
+    "open:android": "cap open android",
+    "open:ios": "cap open ios",
+    "build:android:debug": "cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.6.2"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.6.2",
+    "@capacitor/cli": "^7.6.2",
+    "@capacitor/ios": "^7.6.2"
+  }
+}

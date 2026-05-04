@@ -1,0 +1,9 @@
+{
+  "appId": "com.mobilecomputeruse.app",
+  "appName": "Computer Use",
+  "webDir": "www",
+  "server": {
+    "cleartext": true,
+    "allowNavigation": ["*"]
+  }
+}

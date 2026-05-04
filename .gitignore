@@ -27,8 +27,11 @@ computer-use-sessions.json
 .idea/
 .vscode/
 
-# Future mobile app outputs
-android/
-ios/
+# Dependency directories
 node_modules/
-www/
+
+# Native build outputs
+**/android/app/build/
+**/android/.gradle/
+**/ios/App/build/
+**/ios/DerivedData/

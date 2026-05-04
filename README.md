@@ -29,6 +29,24 @@ python run_mobile_computer_use_bridge.py --host 0.0.0.0 --workspace /path/to/all
 
 Then open the printed mobile URL from your phone on the same trusted network.
 
+## Native Mobile Apps
+
+An optional Capacitor app shell lives in `apps/mobile`. It keeps the browser
+client as the source of truth: the app checks a local bridge URL, stores it on
+device, and opens the bridge-served `/mobile` page.
+
+```bash
+cd apps/mobile
+npm install
+npm run check
+npm run sync
+```
+
+Native projects are in `apps/mobile/android` and `apps/mobile/ios`.
+
+For iPhone builds without a local Mac, use Xcode Cloud and TestFlight internal
+testing. See `docs/xcode-cloud.md`.
+
 ## Agent Kernel Lite
 
 Agent Kernel Lite imports this package through its compatibility wrapper scripts.

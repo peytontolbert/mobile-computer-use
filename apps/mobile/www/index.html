@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Computer Use</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main>
+    <section class="panel" id="connectPanel">
+      <div class="brand">
+        <span class="mark">CU</span>
+        <div>
+          <h1>Computer Use</h1>
+          <p>Connect to your trusted local bridge.</p>
+        </div>
+      </div>
+
+      <form id="bridgeForm" autocomplete="off">
+        <label for="bridgeUrlInput">Bridge URL</label>
+        <input
+          id="bridgeUrlInput"
+          name="bridgeUrl"
+          type="url"
+          inputmode="url"
+          placeholder="http://192.168.1.25:45731"
+          spellcheck="false"
+          autocapitalize="none"
+          required
+        >
+        <button id="connectButton" type="submit">Connect</button>
+      </form>
+
+      <div class="row">
+        <button id="openSavedButton" class="secondary" type="button">Open Saved Bridge</button>
+        <button id="clearSavedButton" class="secondary" type="button">Clear</button>
+      </div>
+
+      <p id="status" class="status">Start the bridge on your computer, then enter its LAN URL.</p>
+      <dl id="bridgeDetails" class="details hidden"></dl>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
