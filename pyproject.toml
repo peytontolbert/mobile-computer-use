@@ -1,0 +1,14 @@
+[project]
+name = "mobile-computer-use"
+version = "0.1.0"
+description = "Secure mobile control for local coding agents and tmux terminals."
+requires-python = ">=3.10"
+dependencies = [
+  "cryptography",
+]
+
+[project.scripts]
+mobile-computer-use-bridge = "mobile_computer_use.bridge:main"
+
+[tool.setuptools]
+packages = ["mobile_computer_use"]

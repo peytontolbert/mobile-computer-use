@@ -1,0 +1,34 @@
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+*.egg-info/
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Local bridge state
+.agent-kernel-lite/
+pairing-grants.json
+mobile-grants.json
+computer-use-sessions.json
+
+# Logs and editor state
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+# Future mobile app outputs
+android/
+ios/
+node_modules/
+www/
