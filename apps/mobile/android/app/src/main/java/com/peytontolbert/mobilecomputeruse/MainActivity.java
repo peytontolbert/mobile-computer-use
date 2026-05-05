@@ -1,4 +1,4 @@
-package com.mobilecomputeruse.app;
+package com.peytontolbert.mobilecomputeruse;
 
 import com.getcapacitor.BridgeActivity;
 

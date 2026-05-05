@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">Computer Use</string>
     <string name="title_activity_main">Computer Use</string>
-    <string name="package_name">com.mobilecomputeruse.app</string>
-    <string name="custom_url_scheme">com.mobilecomputeruse.app</string>
+    <string name="package_name">com.peytontolbert.mobilecomputeruse</string>
+    <string name="custom_url_scheme">com.peytontolbert.mobilecomputeruse</string>
 </resources>

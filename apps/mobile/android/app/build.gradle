@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.mobilecomputeruse.app"
+    namespace "com.peytontolbert.mobilecomputeruse"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.mobilecomputeruse.app"
+        applicationId "com.peytontolbert.mobilecomputeruse"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

@@ -15,7 +15,7 @@ not list or publish the app publicly.
 Create a new app record:
 
 - Name: `Computer Use`
-- Bundle ID: `com.mobilecomputeruse.app`
+- Bundle ID: `com.peytontolbert.mobilecomputeruse`
 - SKU: any unique internal value, for example `mobile-computer-use`
 - Platform: iOS
 
