@@ -1,10 +1,12 @@
 const STORAGE_KEY = 'mobile-computer-use-bridge-url';
+const DEMO_URL = 'https://peytontolbert.com/mobiledemo/';
 
 const bridgeForm = document.getElementById('bridgeForm');
 const bridgeUrlInput = document.getElementById('bridgeUrlInput');
 const connectButton = document.getElementById('connectButton');
 const openSavedButton = document.getElementById('openSavedButton');
 const clearSavedButton = document.getElementById('clearSavedButton');
+const demoButton = document.getElementById('demoButton');
 const helpButton = document.getElementById('helpButton');
 const helpDialog = document.getElementById('helpDialog');
 const closeHelpButton = document.getElementById('closeHelpButton');
@@ -12,6 +14,21 @@ const statusEl = document.getElementById('status');
 const bridgeDetails = document.getElementById('bridgeDetails');
 
 let connectInFlight = false;
+
+function maybeDemoUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
+    const url = new URL(withScheme);
+    if (url.hostname === 'peytontolbert.com' && url.pathname.replace(/\/+$/, '') === '/mobiledemo') {
+      return DEMO_URL;
+    }
+  } catch {
+    return '';
+  }
+  return '';
+}
 
 function normalizeBridgeUrl(value) {
   const raw = String(value || '').trim();
@@ -127,8 +144,21 @@ function openBridge(bridgeUrl) {
   window.location.assign(`${bridgeUrl}/mobile`);
 }
 
+function openDemo() {
+  setStatus('Opening review demo...', 'pending');
+  window.location.assign(DEMO_URL);
+}
+
 async function connect(value, shouldOpen = true) {
   if (connectInFlight) return;
+  const demoUrl = maybeDemoUrl(value);
+  if (demoUrl) {
+    localStorage.setItem(STORAGE_KEY, demoUrl);
+    bridgeUrlInput.value = demoUrl;
+    setStatus('Review demo is ready.', 'ok');
+    if (shouldOpen) openDemo();
+    return;
+  }
   connectInFlight = true;
   connectButton.disabled = true;
   openSavedButton.disabled = true;
@@ -174,6 +204,8 @@ clearSavedButton.addEventListener('click', () => {
   bridgeDetails.classList.add('hidden');
   setStatus('Saved bridge cleared.');
 });
+
+demoButton.addEventListener('click', openDemo);
 
 helpButton.addEventListener('click', () => {
   if (typeof helpDialog.showModal === 'function') {

@@ -10,5 +10,6 @@ Guides for the local bridge (`mobile_computer_use.bridge`), how it connects to a
 | [HTTP API overview](http-api.md) | Public routes, encrypted `/v1/message` channel, `/mobile/api/*` |
 | [Providers](providers.md) | Codex, Cursor, tmux, planned adapters |
 | [Testing](testing.md) | pytest, layout, CI |
+| [App Review notes](app-review.md) | Demo URL, reviewer notes, icon/metadata checklist |
 
 Quick start remains in the repository [README](../README.md).

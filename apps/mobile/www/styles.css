@@ -111,6 +111,12 @@ button.secondary {
   color: #edf4f2;
 }
 
+.demoButton {
+  border: 1px solid #3c6f5d;
+  background: #143327;
+  color: #c9f8df;
+}
+
 .iconButton {
   display: grid;
   place-items: center;

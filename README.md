@@ -92,6 +92,7 @@ Structured guides are in [`docs/README.md`](docs/README.md):
 - [Testing](docs/testing.md) — running pytest and CI
 
 Release and iOS notes: [Xcode Cloud](docs/xcode-cloud.md), [GitHub Actions iOS](docs/github-actions-ios.md), [mobile release checklist](docs/mobile-release-ux-checklist.md).
+App Review notes and demo instructions are in [docs/app-review.md](docs/app-review.md).
 
 ## Local Development
 

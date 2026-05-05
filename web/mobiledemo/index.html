@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Computer Use Review Demo</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #101418; color: #eef4f2; }
+    header { position: sticky; top: 0; z-index: 2; padding: max(14px, env(safe-area-inset-top)) 14px 12px; border-bottom: 1px solid #26323a; background: #101418; }
+    main { padding: 14px 14px 160px; }
+    h1 { margin: 0; font-size: 18px; letter-spacing: 0; }
+    h2 { margin: 18px 0 8px; font-size: 15px; letter-spacing: 0; }
+    p { margin: 4px 0 0; color: #aebbc2; line-height: 1.45; }
+    button, textarea { width: 100%; min-height: 44px; border: 1px solid #33434c; border-radius: 8px; font: inherit; }
+    button { margin-top: 8px; padding: 10px 12px; border: 0; background: #1d4ed8; color: #ffffff; font-weight: 800; }
+    button.secondary { background: #24313a; color: #eef4f2; }
+    button.danger { background: #5f262b; color: #ffe5e8; }
+    button:disabled { opacity: 0.55; }
+    textarea { min-height: 92px; padding: 10px; resize: vertical; background: #182128; color: #eef4f2; }
+    .hidden { display: none !important; }
+    .topNav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-top: 10px; }
+    .topNav button { width: auto; margin-top: 0; }
+    .topNavTitle { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
+    .panelBox { margin: 10px 0; padding: 10px; border: 1px solid #2c3a43; border-radius: 8px; background: #11191f; }
+    .readinessGrid { display: grid; gap: 8px; margin-top: 8px; }
+    .providerBadge, .session { border: 1px solid #2c3a43; border-radius: 8px; background: #151d23; }
+    .providerBadge { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; }
+    .providerBadge[data-available="true"] { border-color: #2d6d49; }
+    .session { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px; margin: 10px 0; }
+    .session button { width: auto; margin-top: 0; }
+    .session strong { display: block; margin-bottom: 4px; }
+    .muted, .meta { color: #aebbc2; font-size: 13px; }
+    .sectionTitle { margin: 16px 0 6px; color: #aebbc2; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    .messages { display: flex; flex-direction: column; gap: 8px; }
+    .message { border: 1px solid #2c3a43; border-radius: 10px; padding: 10px; background: #151d23; }
+    .message.user { margin-left: 22px; background: #173422; border-color: #28593a; }
+    .message.agent { margin-right: 22px; background: #111c24; border-color: #28485b; }
+    .message.system { background: #151a20; opacity: 0.86; }
+    .meta { margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .content { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+    .statusPill { display: inline-block; margin-left: 6px; padding: 2px 7px; border-radius: 999px; background: #22313a; color: #c7d6dd; font-size: 12px; }
+    form { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); border-top: 1px solid #26323a; background: #101418; }
+    .composerActions { display: grid; grid-template-columns: minmax(92px, auto) 1fr; gap: 8px; }
+    #speechButton[data-listening="true"] { background: #0f766e; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Computer Use</h1>
+    <div id="status" class="muted">Review demo ready.</div>
+    <div id="topNav" class="topNav hidden">
+      <button id="backButton" class="secondary" type="button">Back</button>
+      <div id="topNavTitle" class="topNavTitle">Review Demo</div>
+      <button id="stopButton" class="danger" type="button">Stop</button>
+    </div>
+  </header>
+  <main>
+    <section id="listView">
+      <div class="panelBox">
+        <strong>Review Demo</strong>
+        <p>This static demo shows the same mobile workflows without requiring App Review to install the desktop bridge.</p>
+      </div>
+      <div id="readinessPanel" class="panelBox"></div>
+      <button id="newSessionButton" type="button">New Demo Session</button>
+      <h2>Active Sessions</h2>
+      <div id="sessionList"></div>
+    </section>
+    <section id="chatView" class="hidden">
+      <h2 id="chatTitle">Session</h2>
+      <div class="messages" id="messages"></div>
+    </section>
+  </main>
+  <form id="messageForm" class="hidden">
+    <textarea id="promptInput" placeholder="Message Review Demo..."></textarea>
+    <div class="composerActions">
+      <button id="speechButton" class="secondary" type="button">Voice</button>
+      <button id="sendButton" type="submit">Send</button>
+    </div>
+  </form>
+  <script>
+    const DEMO_SESSIONS = [
+      {
+        id: 'demo_codex_ui',
+        name: 'Codex UI polish',
+        provider: 'Codex',
+        status: 'ready',
+        model: 'default model',
+        providerSessionId: 'codex-demo-42',
+        messages: [
+          ['system', 'Demo bridge', 'Connected to a safe review demo. No local files or provider credentials are used.'],
+          ['agent', 'Codex', 'I can inspect a task, propose a change, and summarize the result from a mobile session.'],
+        ],
+      },
+      {
+        id: 'demo_cursor_api',
+        name: 'Cursor API follow-up',
+        provider: 'Cursor',
+        status: 'completed',
+        model: 'default model',
+        providerSessionId: 'cursor-demo-17',
+        messages: [
+          ['agent', 'Cursor', 'This demonstrates switching providers while keeping the mobile session list and composer behavior consistent.'],
+        ],
+      },
+    ];
+    let sessions = structuredClone(DEMO_SESSIONS);
+    let activeSessionId = '';
+    let speechListening = false;
+    const statusEl = document.getElementById('status');
+    const listView = document.getElementById('listView');
+    const chatView = document.getElementById('chatView');
+    const sessionList = document.getElementById('sessionList');
+    const messages = document.getElementById('messages');
+    const messageForm = document.getElementById('messageForm');
+    const promptInput = document.getElementById('promptInput');
+    const speechButton = document.getElementById('speechButton');
+    const sendButton = document.getElementById('sendButton');
+    const topNav = document.getElementById('topNav');
+    const topNavTitle = document.getElementById('topNavTitle');
+    const chatTitle = document.getElementById('chatTitle');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    function activeSession() {
+      return sessions.find((session) => session.id === activeSessionId) || sessions[0];
+    }
+    function setMode(next) {
+      const inChat = next === 'chat';
+      listView.classList.toggle('hidden', inChat);
+      chatView.classList.toggle('hidden', !inChat);
+      messageForm.classList.toggle('hidden', !inChat);
+      topNav.classList.toggle('hidden', !inChat);
+    }
+    function renderReadiness() {
+      const panel = document.getElementById('readinessPanel');
+      panel.innerHTML = '<strong>Provider readiness</strong>';
+      const grid = document.createElement('div');
+      grid.className = 'readinessGrid';
+      for (const provider of ['Codex', 'Cursor', 'tmux']) {
+        const badge = document.createElement('div');
+        badge.className = 'providerBadge';
+        badge.dataset.available = 'true';
+        badge.innerHTML = `<strong>${provider}</strong><span>Demo ready</span>`;
+        grid.appendChild(badge);
+      }
+      panel.appendChild(grid);
+    }
+    function appendSectionTitle(label) {
+      const title = document.createElement('div');
+      title.className = 'sectionTitle';
+      title.textContent = label;
+      sessionList.appendChild(title);
+    }
+    function renderList() {
+      sessionList.innerHTML = '';
+      appendSectionTitle('Review sessions');
+      for (const session of sessions) {
+        const row = document.createElement('div');
+        row.className = 'session';
+        const body = document.createElement('button');
+        body.className = 'secondary';
+        body.type = 'button';
+        body.innerHTML = `<strong>${session.name}<span class="statusPill">${session.status}</span></strong><span class="muted">${session.provider} - ${session.model} - ${session.providerSessionId}</span>`;
+        body.addEventListener('click', () => openSession(session.id));
+        const close = document.createElement('button');
+        close.className = 'danger';
+        close.type = 'button';
+        close.textContent = 'Close';
+        close.addEventListener('click', () => {
+          sessions = sessions.filter((item) => item.id !== session.id);
+          renderList();
+        });
+        row.append(body, close);
+        sessionList.appendChild(row);
+      }
+    }
+    function renderMessages(session) {
+      messages.innerHTML = '';
+      for (const [role, label, text] of session.messages) {
+        const item = document.createElement('div');
+        item.className = `message ${role}`;
+        item.innerHTML = `<div class="meta">${label}</div><div class="content"></div>`;
+        item.querySelector('.content').textContent = text;
+        messages.appendChild(item);
+      }
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+    function openSession(sessionId) {
+      activeSessionId = sessionId;
+      const session = activeSession();
+      topNavTitle.textContent = session.name;
+      chatTitle.textContent = session.name;
+      statusEl.textContent = `${session.provider} demo session open.`;
+      renderMessages(session);
+      setMode('chat');
+    }
+    function cannedReply(prompt) {
+      if (/voice|speech|mic/i.test(prompt)) return 'Voice input is available through browser speech recognition or the native Capacitor speech plugin when the app has permission.';
+      if (/cursor/i.test(prompt)) return 'Cursor is represented here as a demo provider. In production, the bridge uses the official cursor-agent CLI on the user computer.';
+      if (/codex/i.test(prompt)) return 'Codex is represented here as a demo provider. In production, the bridge sends work to the local Codex CLI session.';
+      return 'Demo response generated. In the real app this turn would run on the paired computer bridge and return live session output.';
+    }
+    function setupSpeech() {
+      if (!SpeechRecognition) {
+        speechButton.addEventListener('click', () => {
+          statusEl.textContent = 'Speech-to-text is not available in this browser or WebView.';
+        });
+        return;
+      }
+      const recognition = new SpeechRecognition();
+      recognition.interimResults = true;
+      recognition.continuous = false;
+      recognition.lang = navigator.language || 'en-US';
+      let base = '';
+      let finalText = '';
+      recognition.onstart = () => {
+        speechListening = true;
+        speechButton.dataset.listening = 'true';
+        speechButton.textContent = 'Listening';
+        statusEl.textContent = 'Listening...';
+      };
+      recognition.onresult = (event) => {
+        let interim = '';
+        for (let index = event.resultIndex; index < event.results.length; index += 1) {
+          const transcript = event.results[index][0]?.transcript || '';
+          if (event.results[index].isFinal) finalText = [finalText, transcript].filter(Boolean).join(' ');
+          else interim = [interim, transcript].filter(Boolean).join(' ');
+        }
+        promptInput.value = [base, finalText, interim].map((part) => part.trim()).filter(Boolean).join(' ');
+      };
+      recognition.onend = () => {
+        speechListening = false;
+        speechButton.dataset.listening = 'false';
+        speechButton.textContent = 'Voice';
+      };
+      speechButton.addEventListener('click', () => {
+        if (speechListening) {
+          recognition.stop();
+          return;
+        }
+        base = promptInput.value;
+        finalText = '';
+        recognition.start();
+      });
+    }
+    document.getElementById('newSessionButton').addEventListener('click', () => {
+      const next = {
+        id: `demo_${Date.now()}`,
+        name: 'New review session',
+        provider: 'Codex',
+        status: 'ready',
+        model: 'default model',
+        providerSessionId: 'review-demo-new',
+        messages: [['system', 'Demo bridge', 'New demo session created.']],
+      };
+      sessions.unshift(next);
+      renderList();
+      openSession(next.id);
+    });
+    document.getElementById('backButton').addEventListener('click', () => {
+      setMode('list');
+      renderList();
+    });
+    document.getElementById('stopButton').addEventListener('click', () => {
+      const session = activeSession();
+      session.status = 'completed';
+      statusEl.textContent = 'Demo session stopped.';
+      renderList();
+      topNavTitle.textContent = session.name;
+    });
+    document.getElementById('messageForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const prompt = promptInput.value.trim();
+      if (!prompt) return;
+      const session = activeSession();
+      session.messages.push(['user', 'You', prompt]);
+      promptInput.value = '';
+      sendButton.disabled = true;
+      renderMessages(session);
+      window.setTimeout(() => {
+        session.messages.push(['agent', session.provider, cannedReply(prompt)]);
+        session.status = 'completed';
+        sendButton.disabled = false;
+        statusEl.textContent = 'Demo response complete.';
+        renderMessages(session);
+        renderList();
+      }, 450);
+    });
+    renderReadiness();
+    renderList();
+    setupSpeech();
+  </script>
+</body>
+</html>
