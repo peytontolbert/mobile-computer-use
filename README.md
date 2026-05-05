@@ -47,6 +47,9 @@ Native projects are in `apps/mobile/android` and `apps/mobile/ios`.
 For iPhone builds without a local Mac, use Xcode Cloud and TestFlight internal
 testing. See `docs/xcode-cloud.md`.
 
+If Xcode Cloud setup blocks on needing Xcode for the first workflow, use the
+manual GitHub Actions macOS workflow in `docs/github-actions-ios.md`.
+
 ## Agent Kernel Lite
 
 Agent Kernel Lite imports this package through its compatibility wrapper scripts.
