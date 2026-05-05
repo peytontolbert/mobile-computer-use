@@ -591,11 +591,18 @@ class BridgeState:
             return 0
         return 60 * 60 * 24 * 30
 
-    def approve_mobile_console(self, token: str, duration: str = MOBILE_DEFAULT_GRANT_DURATION, device: dict[str, Any] | None = None) -> dict[str, Any]:
+    def approve_mobile_console(
+        self,
+        token: str,
+        duration: str = MOBILE_DEFAULT_GRANT_DURATION,
+        device: dict[str, Any] | None = None,
+        approval_code: str = "",
+    ) -> dict[str, Any]:
         device = device if isinstance(device, dict) else {}
         device_id = str(device.get("device_id") or "").strip()
         device_secret = str(device.get("device_secret") or "").strip()
         device_name = str(device.get("device_name") or "Phone").strip()[:120] or "Phone"
+        approval_code = str(approval_code or "").strip()
         if not device_id.startswith("phone_") or len(device_id) < 18:
             raise ValueError("mobile device identity is missing")
         if len(device_secret) < MOBILE_DEVICE_SECRET_BYTES:
@@ -614,22 +621,24 @@ class BridgeState:
             }
         if not sys.stdin.isatty():
             raise ValueError("local computer approval is required, but this bridge has no interactive terminal")
+        if not re.fullmatch(r"\d{6}", approval_code):
+            raise ValueError("mobile approval code is missing")
         grant_id = f"mobile_{secrets.token_urlsafe(18)}"
-        code = f"{secrets.randbelow(1_000_000):06d}"
         ttl = self.mobile_grant_ttl_seconds(duration)
         expires_at = time.time() + ttl if ttl else 0
         device_secret_hash = sha256_hex(device_secret)
         with self.pairing_approval_lock:
             print("", flush=True)
             print("Approve Agent Kernel mobile console?", flush=True)
-            print(f"Mobile code: {code}", flush=True)
+            print(f"Phone approval code: {approval_code}", flush=True)
             print(f"Device: {device_name}", flush=True)
             print(f"Device id: {device_id}", flush=True)
             print(f"Device fingerprint: {device_secret_hash[:16]}", flush=True)
             print(f"Requested duration: {'unlimited' if not ttl else duration}", flush=True)
-            print("Type APPROVE to allow this phone to use the local Computer Use console.", flush=True)
+            print("Only approve if this code matches the code shown on your phone.", flush=True)
+            print("Type the 6-digit phone approval code to allow this phone.", flush=True)
             answer = input("> ").strip()
-        if answer != "APPROVE":
+        if not secrets.compare_digest(answer, approval_code):
             raise ValueError("mobile console was rejected on the computer")
         grant = {
             "grant_id": grant_id,
@@ -646,7 +655,7 @@ class BridgeState:
             "status": "approved",
             "grant_id": grant_id,
             "device_id": device_id,
-            "code": code,
+            "code": approval_code,
             "expires_at": grant["expires_at"],
             "duration": grant["duration"],
         }
@@ -1885,7 +1894,7 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #101418; color: #eef4f2; }
     header, main, form { padding: 14px; }
-    header { border-bottom: 1px solid #26323a; position: sticky; top: 0; background: #101418; z-index: 2; }
+    header { border-bottom: 1px solid #26323a; position: sticky; top: 0; background: #101418; z-index: 3; }
     h1 { font-size: 18px; margin: 0 0 4px; }
     h2 { font-size: 15px; margin: 18px 0 8px; }
     .muted { color: #aebbc2; font-size: 13px; }
@@ -1896,6 +1905,16 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     textarea { min-height: 88px; resize: vertical; background: #182128; color: #eef4f2; }
     input, select { background: #182128; color: #eef4f2; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .topNav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; margin-top: 10px; }
+    .topNav button { width: auto; min-height: 38px; margin-top: 0; padding: 8px 12px; }
+    .topNavTitle { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #eef4f2; font-weight: 800; }
+    .panelBox { border: 1px solid #2c3a43; border-radius: 8px; padding: 10px; margin: 10px 0; background: #11191f; }
+    .panelBox summary { cursor: pointer; font-weight: 700; }
+    .readinessGrid { display: grid; gap: 8px; margin-top: 8px; }
+    .providerBadge { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid #2c3a43; border-radius: 8px; padding: 8px; background: #151d23; }
+    .providerBadge[data-available="true"] { border-color: #2d6d49; }
+    .providerBadge[data-available="false"] { border-color: #833941; }
+    .securityWarning { color: #ffd6a3; }
     .session { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: stretch; border: 1px solid #2c3a43; border-radius: 8px; padding: 10px; margin: 10px 0; background: #151d23; }
     .session > button { margin-top: 0; }
     .session > button.danger { width: auto; min-width: 72px; }
@@ -1925,6 +1944,7 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #0b1014; border: 1px solid #26323a; padding: 10px; border-radius: 8px; margin: 8px 0 0; }
     .statusPill { display: inline-block; padding: 2px 7px; border-radius: 999px; background: #22313a; color: #c7d6dd; font-size: 12px; margin-left: 6px; }
+    .approvalCode { display: inline-block; margin-top: 8px; padding: 6px 10px; border: 1px solid #45616e; border-radius: 8px; background: #0b1014; color: #ffffff; font-size: 20px; font-weight: 800; letter-spacing: 0.12em; }
     form { position: fixed; left: 0; right: 0; bottom: 0; background: #101418; border-top: 1px solid #26323a; }
   </style>
 </head>
@@ -1941,9 +1961,23 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
       </select>
     </label>
     <button id="approveButton" type="button">Approve This Phone</button>
+    <div id="topNav" class="topNav hidden">
+      <button id="navBackButton" class="secondary" type="button">Back</button>
+      <div id="topNavTitle" class="topNavTitle">Computer Use</div>
+      <button id="navInterruptButton" class="danger hidden" type="button">Stop</button>
+      <button id="navRenameButton" class="secondary hidden" type="button">Rename</button>
+    </div>
   </header>
   <main>
     <section id="listView">
+      <details class="panelBox" open>
+        <summary>Setup</summary>
+        <p class="muted">Install the bridge on your computer, then connect from this app or a browser.</p>
+        <pre>python -m pip install git+https://github.com/peytontolbert/mobile-computer-use.git
+mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre>
+        <p class="muted">Use Codex, Cursor, or both. GitHub: https://github.com/peytontolbert/mobile-computer-use</p>
+      </details>
+      <div id="readinessPanel" class="panelBox hidden"></div>
       <button id="newSessionButton" type="button">New Terminal</button>
       <div class="row">
         <button id="scanButton" class="secondary" type="button">Scan PC</button>
@@ -1953,10 +1987,12 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
       <div id="sessionList"></div>
     </section>
     <section id="newView" class="hidden">
-      <button id="cancelNewButton" class="secondary" type="button">Back</button>
       <h2>New Terminal</h2>
       <label>Provider
-        <select id="providerSelect"><option value="codex">Codex</option></select>
+        <select id="providerSelect">
+          <option value="codex">Codex</option>
+          <option value="cursor">Cursor</option>
+        </select>
       </label>
       <label>Session name <input id="sessionNameInput" type="text" placeholder="Frontend fix, prod shell, notes..." autocomplete="off"></label>
       <label>Workspace root <select id="workspaceRootSelect"></select></label>
@@ -1965,8 +2001,7 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     </section>
     <section id="chatView" class="hidden">
       <div class="row">
-        <button id="backButton" class="secondary" type="button">Back</button>
-        <button id="renameSessionButton" class="secondary" type="button">Rename</button>
+        <button id="interruptSessionButton" class="danger hidden" type="button">Interrupt</button>
         <button id="closeSessionButton" class="danger" type="button">Close</button>
       </div>
       <div class="row">
@@ -1993,10 +2028,19 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     let activeSessionId = localStorage.getItem('agent-kernel-mobile-session') || '';
     let mode = 'list';
     let externalSessions = [];
+    let codexChats = [];
     let tmuxPanes = [];
+    let activeSessionProvider = 'codex';
+    let messageInFlight = false;
+    let startTerminalInFlight = false;
     const statusEl = document.getElementById('status');
     const approveButton = document.getElementById('approveButton');
     const approvalDurationSelect = document.getElementById('approvalDurationSelect');
+    const topNav = document.getElementById('topNav');
+    const navBackButton = document.getElementById('navBackButton');
+    const navInterruptButton = document.getElementById('navInterruptButton');
+    const navRenameButton = document.getElementById('navRenameButton');
+    const topNavTitle = document.getElementById('topNavTitle');
     const listView = document.getElementById('listView');
     const newView = document.getElementById('newView');
     const chatView = document.getElementById('chatView');
@@ -2006,16 +2050,33 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     const workspaceRootSelect = document.getElementById('workspaceRootSelect');
     const workspaceInput = document.getElementById('workspaceInput');
     const sessionList = document.getElementById('sessionList');
+    const readinessPanel = document.getElementById('readinessPanel');
     const messages = document.getElementById('messages');
     const promptInput = document.getElementById('promptInput');
     const sendButton = document.getElementById('sendButton');
     const chatTitle = document.getElementById('chatTitle');
     const scanButton = document.getElementById('scanButton');
     const importButton = document.getElementById('importButton');
+    const interruptSessionButton = document.getElementById('interruptSessionButton');
     const expandDetailsButton = document.getElementById('expandDetailsButton');
     const collapseDetailsButton = document.getElementById('collapseDetailsButton');
+    const startTerminalButton = document.getElementById('startTerminalButton');
     function sessionDisplayName(session) {
       return String(session?.name || session?.tmux?.title || session?.workspace || 'Workspace').trim();
+    }
+    function providerDisplayName(provider) {
+      if (provider === 'cursor') return 'Cursor';
+      if (provider === 'tmux') return 'tmux';
+      return 'Codex';
+    }
+    function isProbablyPublicHost(hostname) {
+      const host = String(hostname || '').toLowerCase();
+      return Boolean(host)
+        && host !== 'localhost'
+        && !host.startsWith('127.')
+        && !host.startsWith('10.')
+        && !host.startsWith('192.168.')
+        && !/^172\.(1[6-9]|2\d|3[0-1])\./.test(host);
     }
     function randomToken(prefix = '') {
       const bytes = new Uint8Array(32);
@@ -2023,6 +2084,11 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
       let raw = '';
       for (const byte of bytes) raw += String.fromCharCode(byte);
       return `${prefix}${btoa(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')}`;
+    }
+    function randomApprovalCode() {
+      const bytes = new Uint32Array(1);
+      crypto.getRandomValues(bytes);
+      return String(bytes[0] % 1000000).padStart(6, '0');
     }
     function ensureMobileDeviceIdentity() {
       if (!window.crypto?.getRandomValues) {
@@ -2057,6 +2123,10 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     workspaceInput.addEventListener('change', () => {
       localStorage.setItem('agent-kernel-mobile-workspace', workspaceInput.value.trim());
     });
+    providerSelect.addEventListener('change', () => {
+      activeSessionProvider = providerSelect.value || 'codex';
+      promptInput.placeholder = `Message ${providerDisplayName(activeSessionProvider)}...`;
+    });
     approvalDurationSelect.value = localStorage.getItem('agent-kernel-mobile-approval-duration') || '30d';
     approvalDurationSelect.addEventListener('change', () => {
       localStorage.setItem('agent-kernel-mobile-approval-duration', approvalDurationSelect.value);
@@ -2067,8 +2137,14 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
       newView.classList.toggle('hidden', next !== 'new');
       chatView.classList.toggle('hidden', next !== 'chat');
       messageForm.classList.toggle('hidden', next !== 'chat');
-      promptInput.placeholder = 'Message Codex...';
+      topNav.classList.toggle('hidden', next === 'list');
+      navRenameButton.classList.toggle('hidden', next !== 'chat');
+      if (next !== 'chat') navInterruptButton.classList.add('hidden');
+      topNavTitle.textContent = next === 'chat' ? (chatTitle.textContent || 'Session') : 'New Terminal';
+      promptInput.placeholder = `Message ${providerDisplayName(activeSessionProvider)}...`;
       if (next === 'new') {
+        activeSessionProvider = providerSelect.value || 'codex';
+        promptInput.placeholder = `Message ${providerDisplayName(activeSessionProvider)}...`;
         activeSessionId = '';
         localStorage.removeItem('agent-kernel-mobile-session');
         messages.innerHTML = '';
@@ -2110,6 +2186,10 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
         payload = { error: `Bridge returned HTTP ${response.status}` };
       }
       if (!response.ok) throw new Error(payload.error || payload.status || response.status);
+      if (payload.grant_id && payload.grant_id !== grantId) {
+        grantId = payload.grant_id;
+        localStorage.setItem(MOBILE_GRANT_KEY, grantId);
+      }
       return payload;
     }
     function itemFromEvent(event) {
@@ -2131,16 +2211,54 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
         return String(value);
       }
     }
-    function messageModel(event) {
+    function renderReadiness(payload = {}) {
+      const providers = Array.isArray(payload.providers) ? payload.providers : [];
+      const approval = payload.mobile_approval || {};
+      readinessPanel.innerHTML = '';
+      const title = document.createElement('strong');
+      title.textContent = 'Bridge status';
+      readinessPanel.appendChild(title);
+      const grid = document.createElement('div');
+      grid.className = 'readinessGrid';
+      for (const provider of providers) {
+        const badge = document.createElement('div');
+        badge.className = 'providerBadge';
+        badge.dataset.available = String(Boolean(provider.available));
+        const name = document.createElement('span');
+        name.textContent = provider.name || provider.id || 'Provider';
+        const state = document.createElement('span');
+        state.textContent = provider.available ? 'Ready' : 'Install/login needed';
+        badge.append(name, state);
+        grid.appendChild(badge);
+      }
+      readinessPanel.appendChild(grid);
+      const security = document.createElement('p');
+      security.className = 'muted';
+      const publicHost = isProbablyPublicHost(window.location.hostname);
+      security.textContent = `${publicHost ? 'External address: verify port forwarding is intentional. ' : 'Local/private address. '}Approval: ${approval.duration || 'active'}.`;
+      if (publicHost) security.classList.add('securityWarning');
+      readinessPanel.appendChild(security);
+      readinessPanel.classList.remove('hidden');
+    }
+    function cursorMessageText(message) {
+      if (typeof message === 'string') return message;
+      const content = Array.isArray(message?.content) ? message.content : [];
+      return content
+        .filter((part) => part && part.type === 'text')
+        .map((part) => part.text || '')
+        .join('');
+    }
+    function messageModel(event, provider = activeSessionProvider) {
       const parsed = event?.parsed || {};
       const item = itemFromEvent(event);
       const stream = event?.stream || '';
+      const providerLabel = providerDisplayName(provider);
       if (stream === 'user') return { role: 'user', label: 'You', text: event.text || '' };
       if (stream === 'system') return { role: 'system', label: 'System', text: event.text || '' };
-      if (stream === 'stderr') return { role: 'error', label: 'Codex error', text: event.text || '' };
+      if (stream === 'stderr') return { role: 'error', label: `${providerLabel} error`, text: event.text || '' };
       if (item) {
         const type = item.type || '';
-        if (type === 'agent_message') return { role: 'agent', label: 'Codex', text: item.text || item.message || '' };
+        if (type === 'agent_message') return { role: 'agent', label: providerLabel, text: item.text || item.message || '' };
         if (type === 'reasoning') return { role: 'action', label: 'Reasoning', summary: 'Reasoning', text: item.text || '' };
         if (type === 'command_execution') {
           const status = statusText(item.status);
@@ -2161,10 +2279,24 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
           const todos = (item.items || []).map((todo) => `${todo.completed ? '[x]' : '[ ]'} ${todo.text}`).join('\n');
           return { role: 'action', label: 'Plan', summary: 'Plan updated', text: todos };
         }
-        if (type === 'error') return { role: 'error', label: 'Codex error', text: item.message || compactJson(item) };
+        if (type === 'error') return { role: 'error', label: `${providerLabel} error`, text: item.message || compactJson(item) };
       }
       const type = parsed.type || parsed.msg?.type || '';
-      if (type === 'turn.started') return { role: 'action', label: 'Codex', summary: 'Started working', pill: 'running', text: 'Started working.' };
+      if (type === 'system' && parsed.subtype === 'init') {
+        return { role: 'action', label: providerLabel, summary: 'Started working', pill: parsed.model || 'running', text: `Session ${parsed.session_id || 'started'}` };
+      }
+      if (type === 'user') return { role: 'user', label: 'You', text: cursorMessageText(parsed.message) || event.text || '' };
+      if (type === 'assistant') return { role: 'agent', label: providerLabel, text: cursorMessageText(parsed.message) || event.text || '' };
+      if (type === 'result') {
+        const usage = parsed.usage || {};
+        const parts = [];
+        if (usage.inputTokens != null) parts.push(`${usage.inputTokens} input`);
+        if (usage.outputTokens != null) parts.push(`${usage.outputTokens} output`);
+        if (usage.cacheReadTokens) parts.push(`${usage.cacheReadTokens} cached`);
+        const text = parsed.result || (parts.length ? parts.join(' tokens, ') + ' tokens' : 'Completed.');
+        return { role: parsed.is_error ? 'error' : 'action', label: parsed.is_error ? `${providerLabel} error` : 'Turn completed', summary: 'Turn completed', text };
+      }
+      if (type === 'turn.started') return { role: 'action', label: providerLabel, summary: 'Started working', pill: 'running', text: 'Started working.' };
       if (type === 'turn.completed') {
         const usage = parsed.usage || parsed.msg?.usage || {};
         const parts = [];
@@ -2175,10 +2307,10 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
       }
       if (type === 'turn.failed' || type === 'error') {
         const error = parsed.error || parsed.msg?.error || {};
-        return { role: 'error', label: 'Codex error', text: error.message || parsed.message || parsed.msg?.message || event.text || '' };
+        return { role: 'error', label: `${providerLabel} error`, text: error.message || parsed.message || parsed.msg?.message || event.text || '' };
       }
-      if (parsed.last_agent_message) return { role: 'agent', label: 'Codex', text: parsed.last_agent_message };
-      if (parsed.msg?.last_agent_message) return { role: 'agent', label: 'Codex', text: parsed.msg.last_agent_message };
+      if (parsed.last_agent_message) return { role: 'agent', label: providerLabel, text: parsed.last_agent_message };
+      if (parsed.msg?.last_agent_message) return { role: 'agent', label: providerLabel, text: parsed.msg.last_agent_message };
       if (event.text && !String(event.text).startsWith('{')) return { role: 'system', label: stream || 'Bridge', text: event.text };
       return null;
     }
@@ -2203,8 +2335,8 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
         }
       }
     }
-    function renderEvent(event) {
-      const model = messageModel(event);
+    function renderEvent(event, provider = activeSessionProvider) {
+      const model = messageModel(event, provider);
       if (!model || !model.text) return null;
       const wrapper = document.createElement('article');
       wrapper.className = `message ${model.role}`;
@@ -2248,16 +2380,24 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
       if (!session) return;
       const wasNearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 80;
       statusEl.textContent = `Approved. ${session.status || 'session'}`;
-      const codexId = session.codex_session_id ? ` - ${session.codex_session_id.slice(0, 8)}` : '';
       const provider = session.provider || 'codex';
-      chatTitle.textContent = `${sessionDisplayName(session)} - ${provider === 'tmux' ? 'tmux' : 'Codex'} - ${session.status || ''}${codexId}`;
+      activeSessionProvider = provider;
+      setMode('chat');
+      const providerSessionId = session.provider_session_id || session.codex_session_id || session.cursor_session_id || '';
+      const providerId = providerSessionId ? ` - ${providerSessionId.slice(0, 8)}` : '';
+      chatTitle.textContent = `${sessionDisplayName(session)} - ${providerDisplayName(provider)} - ${session.status || ''}${providerId}`;
+      topNavTitle.textContent = sessionDisplayName(session);
+      promptInput.placeholder = `Message ${providerDisplayName(provider)}...`;
       sendButton.disabled = session.status === 'running' && provider !== 'tmux';
+      navInterruptButton.classList.toggle('hidden', !(session.status === 'running' && provider !== 'tmux'));
+      navInterruptButton.disabled = !(session.status === 'running' && provider !== 'tmux');
+      interruptSessionButton.classList.toggle('hidden', !(session.status === 'running' && provider !== 'tmux'));
+      interruptSessionButton.disabled = !(session.status === 'running' && provider !== 'tmux');
       messages.innerHTML = '';
       for (const event of session.events || []) {
-        const rendered = renderEvent(event);
+        const rendered = renderEvent(event, provider);
         if (rendered) messages.appendChild(rendered);
       }
-      setMode('chat');
       if (wasNearBottom) window.setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 0);
     }
     function setAllActionDetails(open) {
@@ -2293,6 +2433,7 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     }
     async function closeSession(sessionId = activeSessionId) {
       if (!sessionId) return;
+      if (!confirm('Close this session? This cannot be undone from the phone.')) return;
       statusEl.textContent = 'Closing session...';
       try {
         await api('/mobile/api/close', { session_id: sessionId });
@@ -2307,6 +2448,20 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
         statusEl.textContent = error.message || 'Could not close session.';
       }
     }
+    async function interruptActiveSession() {
+      if (!activeSessionId) return;
+      if (!confirm('Interrupt the running agent turn?')) return;
+      navInterruptButton.disabled = true;
+      interruptSessionButton.disabled = true;
+      statusEl.textContent = 'Interrupting session...';
+      try {
+        const result = await api('/mobile/api/cancel', { session_id: activeSessionId });
+        renderSession(result);
+        window.setTimeout(refresh, 500);
+      } catch (error) {
+        statusEl.textContent = error.message || 'Could not interrupt session.';
+      }
+    }
     function appendSectionTitle(text) {
       const title = document.createElement('div');
       title.className = 'sectionTitle';
@@ -2314,11 +2469,18 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
       sessionList.appendChild(title);
     }
     async function importCodexSession(row = {}) {
-      const codexSessionId = prompt('Codex session id to resume', row.codex_session_id || '');
+      const codexSessionId = row.codex_session_id || prompt('Codex session id to resume', '');
       if (!codexSessionId) return;
-      const workspace = prompt('Workspace for this session', row.workspace || workspaceInput.value.trim() || workspaceRootSelect.value);
+      const previewLines = Array.isArray(row.messages)
+        ? row.messages.map((message) => `- ${message.text || ''}`).join('\n')
+        : row.preview || '';
+      const importWorkspace = row.workspace || workspaceInput.value.trim() || workspaceRootSelect.value;
+      if (previewLines && !confirm(`Import this Codex chat?\n\nDirectory: ${importWorkspace || 'unknown'}\n\n${previewLines.slice(0, 1200)}`)) return;
+      const workspace = row.codex_session_id
+        ? importWorkspace
+        : prompt('Workspace for this session', row.workspace || workspaceInput.value.trim() || workspaceRootSelect.value);
       if (!workspace) return;
-      const name = prompt('Session name', row.name || '') || '';
+      const name = row.name || prompt('Session name', firstLine(row.preview || 'Imported Codex chat', 48)) || '';
       workspaceInput.value = workspace;
       localStorage.setItem('agent-kernel-mobile-workspace', workspace);
       statusEl.textContent = 'Importing Codex session...';
@@ -2351,14 +2513,35 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
       try {
         const payload = await api('/mobile/api/discover');
         externalSessions = payload.external_sessions || [];
+        codexChats = payload.codex_chats || [];
         tmuxPanes = payload.tmux_panes || [];
-        statusEl.textContent = `Found ${externalSessions.length} Codex process(es), ${tmuxPanes.length} tmux pane(s).`;
+        statusEl.textContent = `Found ${codexChats.length} Codex chat(s), ${externalSessions.length} process(es), ${tmuxPanes.length} tmux pane(s).`;
         refresh();
       } catch (error) {
         statusEl.textContent = error.message || 'Could not scan computer.';
       }
     }
     function renderDiscoveryRows() {
+      if (codexChats.length) appendSectionTitle('Recent Codex chats');
+      for (const row of codexChats) {
+        const card = document.createElement('div');
+        card.className = 'session';
+        const openButton = document.createElement('button');
+        openButton.type = 'button';
+        openButton.className = 'sessionOpen';
+        const title = document.createElement('strong');
+        title.textContent = firstLine(row.title || row.preview || row.codex_session_id || 'Codex chat', 80);
+        const detail = document.createElement('span');
+        detail.textContent = `${row.workspace || 'unknown directory'} - ${row.message_count || 0} prompt${row.message_count === 1 ? '' : 's'} - ${String(row.codex_session_id || '').slice(0, 8)}`;
+        openButton.append(title, detail);
+        openButton.addEventListener('click', () => importCodexSession(row));
+        const importRowButton = document.createElement('button');
+        importRowButton.type = 'button';
+        importRowButton.textContent = 'Import';
+        importRowButton.addEventListener('click', () => importCodexSession(row));
+        card.append(openButton, importRowButton);
+        sessionList.appendChild(card);
+      }
       if (externalSessions.length) appendSectionTitle('Codex processes');
       for (const row of externalSessions) {
         const card = document.createElement('div');
@@ -2402,7 +2585,7 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     async function refresh() {
       approveButton.classList.toggle('hidden', Boolean(grantId));
       approvalDurationSelect.disabled = Boolean(grantId);
-      if (!grantId) {
+      if (!grantId && !(mobileDeviceId && mobileDeviceSecret)) {
         clearMobileGrant();
         return;
       }
@@ -2413,9 +2596,10 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
         clearMobileGrant(error.message || 'Approval expired. Approve this phone again.');
         return;
       }
+      renderReadiness(payload);
       const sessions = payload.sessions || [];
       sessionList.innerHTML = '';
-      if (!sessions.length && !externalSessions.length && !tmuxPanes.length) {
+      if (!sessions.length && !codexChats.length && !externalSessions.length && !tmuxPanes.length) {
         const empty = document.createElement('p');
         empty.className = 'muted';
         empty.textContent = 'No sessions yet.';
@@ -2430,8 +2614,9 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
         const title = document.createElement('strong');
         title.textContent = sessionDisplayName(session);
         const detail = document.createElement('span');
-        const codexId = session.codex_session_id ? ` - ${session.codex_session_id.slice(0, 8)}` : '';
-        detail.textContent = `${session.status || 'session'} - ${session.model || 'default model'}${codexId}`;
+        const providerSessionId = session.provider_session_id || session.codex_session_id || session.cursor_session_id || '';
+        const providerId = providerSessionId ? ` - ${providerSessionId.slice(0, 8)}` : '';
+        detail.textContent = `${providerDisplayName(session.provider || 'codex')} - ${session.status || 'session'} - ${session.model || 'default model'}${providerId}`;
         openButton.append(title, detail);
         openButton.addEventListener('click', () => openSession(session.session_id));
         const closeButton = document.createElement('button');
@@ -2457,12 +2642,16 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
       }
     }
     approveButton.addEventListener('click', async () => {
-      statusEl.textContent = 'Waiting for desktop approval...';
       try {
+        if (!window.crypto?.getRandomValues) {
+          throw new Error('Secure random generation is required to approve this phone.');
+        }
+        const approvalCode = randomApprovalCode();
+        statusEl.innerHTML = `Type this code in the bridge terminal:<br><span class="approvalCode">${approvalCode}</span>`;
         const duration = approvalDurationSelect.value || '30d';
         localStorage.setItem('agent-kernel-mobile-approval-duration', duration);
         const device = ensureMobileDeviceIdentity();
-        const payload = await api('/mobile/api/approve', { duration, ...device });
+        const payload = await api('/mobile/api/approve', { duration, approval_code: approvalCode, ...device });
         grantId = payload.grant_id;
         localStorage.setItem(MOBILE_GRANT_KEY, grantId);
         statusEl.textContent = `Approved. Code ${payload.code}`;
@@ -2475,8 +2664,22 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     document.getElementById('newSessionButton').addEventListener('click', () => setMode('new'));
     scanButton.addEventListener('click', scanComputer);
     importButton.addEventListener('click', () => importCodexSession());
-    document.getElementById('cancelNewButton').addEventListener('click', () => setMode('list'));
-    document.getElementById('startTerminalButton').addEventListener('click', async () => {
+    navBackButton.addEventListener('click', () => {
+      if (mode === 'chat') {
+        activeSessionId = '';
+        localStorage.removeItem('agent-kernel-mobile-session');
+        setMode('list');
+        refresh();
+      } else {
+        setMode('list');
+      }
+    });
+    navRenameButton.addEventListener('click', renameActiveSession);
+    navInterruptButton.addEventListener('click', interruptActiveSession);
+    startTerminalButton.addEventListener('click', async () => {
+      if (startTerminalInFlight) return;
+      startTerminalInFlight = true;
+      startTerminalButton.disabled = true;
       const workspace = workspaceInput.value.trim() || workspaceRootSelect.value;
       const name = sessionNameInput.value.trim();
       localStorage.setItem('agent-kernel-mobile-workspace', workspace);
@@ -2489,22 +2692,21 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
         window.setTimeout(refresh, 500);
       } catch (error) {
         statusEl.textContent = error.message || 'Could not start terminal.';
+      } finally {
+        startTerminalInFlight = false;
+        startTerminalButton.disabled = false;
       }
     });
-    document.getElementById('backButton').addEventListener('click', () => {
-      activeSessionId = '';
-      localStorage.removeItem('agent-kernel-mobile-session');
-      setMode('list');
-      refresh();
-    });
-    document.getElementById('renameSessionButton').addEventListener('click', renameActiveSession);
+    interruptSessionButton.addEventListener('click', interruptActiveSession);
     expandDetailsButton.addEventListener('click', () => setAllActionDetails(true));
     collapseDetailsButton.addEventListener('click', () => setAllActionDetails(false));
     document.getElementById('closeSessionButton').addEventListener('click', () => closeSession(activeSessionId));
     document.getElementById('messageForm').addEventListener('submit', async (event) => {
       event.preventDefault();
+      if (messageInFlight) return;
       const prompt = promptInput.value.trim();
       if (!prompt || sendButton.disabled) return;
+      messageInFlight = true;
       promptInput.value = '';
       sendButton.disabled = true;
       let resultStatus = '';
@@ -2526,6 +2728,7 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
         promptInput.value = prompt;
         statusEl.textContent = error.message || 'Message failed.';
       } finally {
+        messageInFlight = false;
         sendButton.disabled = resultStatus === 'running' && resultProvider !== 'tmux';
       }
     });
@@ -2535,6 +2738,7 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
   </script>
 </body>
 </html>
+
 '''
 
 
@@ -2601,6 +2805,7 @@ class Handler(BaseHTTPRequestHandler):
                     "device_secret": body.get("device_secret") or "",
                     "device_name": body.get("device_name") or "",
                 },
+                str(body.get("approval_code") or ""),
             ))
             return
         mobile_grant = self.state.require_mobile_grant(body)
@@ -2613,6 +2818,13 @@ class Handler(BaseHTTPRequestHandler):
                 "status": "ok",
                 "grant_id": mobile_grant.get("grant_id"),
                 "sessions": self.state.active_mobile_sessions(),
+                "providers": self.state.provider_catalog(),
+                "allowed_workspaces": [str(item) for item in self.state.allowed_workspaces],
+                "mobile_approval": {
+                    "duration": mobile_grant.get("duration") or MOBILE_DEFAULT_GRANT_DURATION,
+                    "expires_at": mobile_grant.get("expires_at") or 0,
+                    "device_name": mobile_grant.get("device_name") or "Phone",
+                },
             })
         elif path == "/mobile/api/discover":
             json_response(self, 200, {
