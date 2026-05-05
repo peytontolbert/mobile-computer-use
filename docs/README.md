@@ -9,5 +9,6 @@ Guides for the local bridge (`mobile_computer_use.bridge`), how it connects to a
 | [Configuration](configuration.md) | Command-line flags, config directory, provider binaries |
 | [HTTP API overview](http-api.md) | Public routes, encrypted `/v1/message` channel, `/mobile/api/*` |
 | [Providers](providers.md) | Codex, Cursor, tmux, planned adapters |
+| [Testing](testing.md) | pytest, layout, CI |
 
 Quick start remains in the repository [README](../README.md).

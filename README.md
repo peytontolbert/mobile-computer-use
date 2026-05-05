@@ -86,6 +86,7 @@ Structured guides are in [`docs/README.md`](docs/README.md):
 - [Configuration](docs/configuration.md) — CLI reference and environment  
 - [HTTP API](docs/http-api.md) — routes, encrypted channel, mobile JSON API  
 - [Providers](docs/providers.md) — Codex, Cursor, tmux, future adapters  
+- [Testing](docs/testing.md) — running pytest and CI
 
 Release and iOS notes: [Xcode Cloud](docs/xcode-cloud.md), [GitHub Actions iOS](docs/github-actions-ios.md), [mobile release checklist](docs/mobile-release-ux-checklist.md).
 
@@ -96,6 +97,15 @@ For local development from a cloned checkout, this is equivalent:
 ```bash
 python run_mobile_computer_use_bridge.py --host 0.0.0.0 --workspace /path/to/allowed/root
 ```
+
+Run the automated tests:
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pytest
+```
+
+(Details in [`docs/testing.md`](docs/testing.md).)
 
 ## Native Mobile Apps
 

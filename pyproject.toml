@@ -7,8 +7,17 @@ dependencies = [
   "cryptography",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+]
+
 [project.scripts]
 mobile-computer-use-bridge = "mobile_computer_use.bridge:main"
 
 [tool.setuptools]
 packages = ["mobile_computer_use"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

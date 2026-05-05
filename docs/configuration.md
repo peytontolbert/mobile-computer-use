@@ -43,3 +43,13 @@ export MOBILE_COMPUTER_USE_PATH=/path/to/mobile-computer-use
 ```
 
 if the checkout is not beside the consumer project.
+
+## Development extras
+
+For contributors running the automated suite, install optional dev dependencies (`pytest`) with:
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
+See [Testing](testing.md) for what is covered and how CI runs it.

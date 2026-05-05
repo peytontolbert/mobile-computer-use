@@ -60,6 +60,9 @@
     .statusPill { display: inline-block; padding: 2px 7px; border-radius: 999px; background: #22313a; color: #c7d6dd; font-size: 12px; margin-left: 6px; }
     .approvalCode { display: inline-block; margin-top: 8px; padding: 6px 10px; border: 1px solid #45616e; border-radius: 8px; background: #0b1014; color: #ffffff; font-size: 20px; font-weight: 800; letter-spacing: 0.12em; }
     form { position: fixed; left: 0; right: 0; bottom: 0; background: #101418; border-top: 1px solid #26323a; }
+    .composerActions { display: grid; grid-template-columns: minmax(92px, auto) 1fr; gap: 8px; }
+    .composerActions button { margin-top: 8px; }
+    #speechButton[data-listening="true"] { background: #0f766e; }
   </style>
 </head>
 <body>
@@ -128,7 +131,10 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
   </main>
   <form id="messageForm" class="hidden">
     <textarea id="promptInput" placeholder="Message Codex..."></textarea>
-    <button id="sendButton" type="submit">Send</button>
+    <div class="composerActions">
+      <button id="speechButton" class="secondary" type="button">Voice</button>
+      <button id="sendButton" type="submit">Send</button>
+    </div>
   </form>
   <script>
     const TOKEN = __TOKEN__;
@@ -167,6 +173,7 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
     const readinessPanel = document.getElementById('readinessPanel');
     const messages = document.getElementById('messages');
     const promptInput = document.getElementById('promptInput');
+    const speechButton = document.getElementById('speechButton');
     const sendButton = document.getElementById('sendButton');
     const chatTitle = document.getElementById('chatTitle');
     const scanButton = document.getElementById('scanButton');
@@ -175,6 +182,11 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
     const expandDetailsButton = document.getElementById('expandDetailsButton');
     const collapseDetailsButton = document.getElementById('collapseDetailsButton');
     const startTerminalButton = document.getElementById('startTerminalButton');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let speechRecognition = null;
+    let speechListening = false;
+    let speechBaseText = '';
+    let speechFinalText = '';
     function sessionDisplayName(session) {
       return String(session?.name || session?.tmux?.title || session?.workspace || 'Workspace').trim();
     }
@@ -191,6 +203,64 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
         && !host.startsWith('10.')
         && !host.startsWith('192.168.')
         && !/^172\.(1[6-9]|2\d|3[0-1])\./.test(host);
+    }
+    function joinPromptText(...parts) {
+      return parts.map((part) => String(part || '').trim()).filter(Boolean).join(' ');
+    }
+    function setSpeechListening(next) {
+      speechListening = Boolean(next);
+      speechButton.dataset.listening = String(speechListening);
+      speechButton.textContent = speechListening ? 'Listening' : 'Voice';
+    }
+    function setupSpeechToText() {
+      if (!SpeechRecognition) {
+        speechButton.disabled = true;
+        speechButton.title = 'Speech-to-text is not available in this browser.';
+        return;
+      }
+      speechRecognition = new SpeechRecognition();
+      speechRecognition.continuous = false;
+      speechRecognition.interimResults = true;
+      speechRecognition.lang = navigator.language || 'en-US';
+      speechRecognition.onstart = () => {
+        setSpeechListening(true);
+        statusEl.textContent = 'Listening...';
+      };
+      speechRecognition.onresult = (event) => {
+        let interimText = '';
+        for (let index = event.resultIndex; index < event.results.length; index += 1) {
+          const transcript = event.results[index][0]?.transcript || '';
+          if (event.results[index].isFinal) {
+            speechFinalText = joinPromptText(speechFinalText, transcript);
+          } else {
+            interimText = joinPromptText(interimText, transcript);
+          }
+        }
+        promptInput.value = joinPromptText(speechBaseText, speechFinalText, interimText);
+        promptInput.focus();
+      };
+      speechRecognition.onerror = (event) => {
+        const error = String(event.error || 'speech recognition failed').replace(/-/g, ' ');
+        statusEl.textContent = `Voice input stopped: ${error}.`;
+      };
+      speechRecognition.onend = () => {
+        setSpeechListening(false);
+      };
+      speechButton.addEventListener('click', () => {
+        if (speechListening) {
+          speechRecognition.stop();
+          return;
+        }
+        speechBaseText = promptInput.value;
+        speechFinalText = '';
+        try {
+          speechRecognition.lang = navigator.language || 'en-US';
+          speechRecognition.start();
+        } catch (error) {
+          statusEl.textContent = 'Voice input could not start. Try again.';
+          setSpeechListening(false);
+        }
+      });
     }
     function randomToken(prefix = '') {
       const bytes = new Uint8Array(32);
@@ -846,6 +916,7 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
         sendButton.disabled = resultStatus === 'running' && resultProvider !== 'tmux';
       }
     });
+    setupSpeechToText();
     window.setInterval(() => { if (grantId) refresh().catch(() => {}); }, 3000);
     setMode('list');
     refresh().catch((error) => { clearMobileGrant(error.message || String(error)); });
