@@ -2,7 +2,73 @@
 
 Secure mobile control for local coding agents and tmux terminals.
 
-Current provider support:
+Use an iPhone app, Android app, or mobile browser to start and continue coding
+agent sessions running on your own computer.
+
+## Quick Start
+
+### 1. Install The Bridge
+
+Run this on the computer you want to control:
+
+```bash
+python -m pip install git+https://github.com/peytontolbert/mobile-computer-use.git
+```
+
+### 2. Install At Least One Agent Provider
+
+Codex:
+
+```bash
+npm install -g @openai/codex
+codex
+codex --version
+```
+
+Cursor:
+
+```bash
+curl https://cursor.com/install -fsS | bash
+cursor-agent login
+cursor-agent status
+```
+
+You can use Codex, Cursor, or both. Cursor can also use `CURSOR_API_KEY` if that
+environment variable is set before starting the bridge.
+
+### 3. Start The Bridge
+
+```bash
+mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root
+```
+
+Use a workspace folder you are comfortable letting the mobile device control.
+The bridge prints a URL like:
+
+```text
+http://192.168.1.25:45731/
+```
+
+Keep the terminal open while using the app.
+
+### 4. Connect From Your Phone
+
+You have two options:
+
+- iPhone or Android app: open the app and enter the bridge URL.
+- Mobile browser: open the printed URL directly, usually `/mobile` on the same
+  host, for example `http://192.168.1.25:45731/mobile`.
+
+When the phone asks for approval, look at the bridge terminal on your computer
+and type:
+
+```text
+APPROVE
+```
+
+After pairing, choose Codex or Cursor in the mobile UI and start a session.
+
+## Supported Providers
 
 - Codex sessions through `codex exec --json` and `codex exec resume`
 - Cursor sessions through the official `cursor-agent` CLI
@@ -11,31 +77,7 @@ Current provider support:
 
 Claude Code is planned as a provider adapter, but is not enabled yet.
 
-For Cursor, install and authenticate the official CLI first:
-
-```bash
-curl https://cursor.com/install -fsS | bash
-cursor-agent login
-cursor-agent status
-```
-
-Alternatively, start the bridge with `CURSOR_API_KEY` in its environment.
-
-## Run
-
-Install from GitHub:
-
-```bash
-python -m pip install git+https://github.com/peytontolbert/mobile-computer-use.git
-```
-
-Then start the bridge on the computer you want to control:
-
-```bash
-mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root
-```
-
-Then open the printed mobile URL from your phone on the same trusted network.
+## Local Development
 
 For local development from a cloned checkout, this is equivalent:
 
