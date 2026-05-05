@@ -59,11 +59,11 @@ You have two options:
 - Mobile browser: open the printed URL directly, usually `/mobile` on the same
   host, for example `http://192.168.1.25:45731/mobile`.
 
-When the phone asks for approval, look at the bridge terminal on your computer
-and type:
+When the phone asks for approval, it shows a six-digit code. Look at the bridge
+terminal on your computer and type the code shown on your phone.
 
 ```text
-APPROVE
+123456
 ```
 
 After pairing, choose Codex or Cursor in the mobile UI and start a session.
@@ -76,6 +76,18 @@ After pairing, choose Codex or Cursor in the mobile UI and start a session.
 - tmux pane attach, capture, and input injection
 
 Claude Code is planned as a provider adapter, but is not enabled yet.
+
+## Documentation
+
+Structured guides are in [`docs/README.md`](docs/README.md):
+
+- [Architecture](docs/architecture.md) — bridge modes, on-disk state, repository layout  
+- [Security and pairing](docs/security-and-pairing.md) — encryption, pairing, origins, networks  
+- [Configuration](docs/configuration.md) — CLI reference and environment  
+- [HTTP API](docs/http-api.md) — routes, encrypted channel, mobile JSON API  
+- [Providers](docs/providers.md) — Codex, Cursor, tmux, future adapters  
+
+Release and iOS notes: [Xcode Cloud](docs/xcode-cloud.md), [GitHub Actions iOS](docs/github-actions-ios.md), [mobile release checklist](docs/mobile-release-ux-checklist.md).
 
 ## Local Development
 

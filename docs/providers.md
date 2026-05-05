@@ -1,5 +1,7 @@
 # Providers
 
+Index of all guides: [Documentation](README.md).
+
 ## Codex
 
 Codex is the original direct coding-agent provider.
