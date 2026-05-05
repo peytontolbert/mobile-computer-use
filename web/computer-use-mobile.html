@@ -212,52 +212,99 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
       speechButton.dataset.listening = String(speechListening);
       speechButton.textContent = speechListening ? 'Listening' : 'Voice';
     }
+    function nativeSpeechRecognition() {
+      return window.Capacitor?.Plugins?.SpeechRecognition || null;
+    }
+    async function appendNativeSpeechResult() {
+      const plugin = nativeSpeechRecognition();
+      if (!plugin) return false;
+      const availability = await plugin.available();
+      if (!availability?.available) {
+        throw new Error('Native speech recognition is not available on this device.');
+      }
+      if (plugin.requestPermissions) {
+        await plugin.requestPermissions();
+      } else if (plugin.requestPermission) {
+        await plugin.requestPermission();
+      }
+      setSpeechListening(true);
+      statusEl.textContent = 'Listening...';
+      const result = await plugin.start({
+        language: navigator.language || 'en-US',
+        maxResults: 1,
+        partialResults: false,
+        popup: true,
+      });
+      const spoken = Array.isArray(result?.matches) ? result.matches[0] : '';
+      if (spoken) {
+        promptInput.value = joinPromptText(promptInput.value, spoken);
+        promptInput.focus();
+      }
+      setSpeechListening(false);
+      return true;
+    }
     function setupSpeechToText() {
-      if (!SpeechRecognition) {
-        speechButton.disabled = true;
+      if (!SpeechRecognition && !nativeSpeechRecognition()) {
         speechButton.title = 'Speech-to-text is not available in this browser.';
+        speechButton.addEventListener('click', () => {
+          statusEl.textContent = 'Speech-to-text is not available in this browser or WebView.';
+        });
         return;
       }
-      speechRecognition = new SpeechRecognition();
-      speechRecognition.continuous = false;
-      speechRecognition.interimResults = true;
-      speechRecognition.lang = navigator.language || 'en-US';
-      speechRecognition.onstart = () => {
-        setSpeechListening(true);
-        statusEl.textContent = 'Listening...';
-      };
-      speechRecognition.onresult = (event) => {
-        let interimText = '';
-        for (let index = event.resultIndex; index < event.results.length; index += 1) {
-          const transcript = event.results[index][0]?.transcript || '';
-          if (event.results[index].isFinal) {
-            speechFinalText = joinPromptText(speechFinalText, transcript);
-          } else {
-            interimText = joinPromptText(interimText, transcript);
+      if (SpeechRecognition) {
+        speechRecognition = new SpeechRecognition();
+        speechRecognition.continuous = false;
+        speechRecognition.interimResults = true;
+        speechRecognition.lang = navigator.language || 'en-US';
+        speechRecognition.onstart = () => {
+          setSpeechListening(true);
+          statusEl.textContent = 'Listening...';
+        };
+        speechRecognition.onresult = (event) => {
+          let interimText = '';
+          for (let index = event.resultIndex; index < event.results.length; index += 1) {
+            const transcript = event.results[index][0]?.transcript || '';
+            if (event.results[index].isFinal) {
+              speechFinalText = joinPromptText(speechFinalText, transcript);
+            } else {
+              interimText = joinPromptText(interimText, transcript);
+            }
           }
-        }
-        promptInput.value = joinPromptText(speechBaseText, speechFinalText, interimText);
-        promptInput.focus();
-      };
-      speechRecognition.onerror = (event) => {
-        const error = String(event.error || 'speech recognition failed').replace(/-/g, ' ');
-        statusEl.textContent = `Voice input stopped: ${error}.`;
-      };
-      speechRecognition.onend = () => {
-        setSpeechListening(false);
-      };
-      speechButton.addEventListener('click', () => {
+          promptInput.value = joinPromptText(speechBaseText, speechFinalText, interimText);
+          promptInput.focus();
+        };
+        speechRecognition.onerror = (event) => {
+          const error = String(event.error || 'speech recognition failed').replace(/-/g, ' ');
+          statusEl.textContent = `Voice input stopped: ${error}.`;
+        };
+        speechRecognition.onend = () => {
+          setSpeechListening(false);
+        };
+      }
+      speechButton.addEventListener('click', async () => {
         if (speechListening) {
-          speechRecognition.stop();
+          if (speechRecognition) speechRecognition.stop();
+          const plugin = nativeSpeechRecognition();
+          if (plugin?.stop) await plugin.stop().catch(() => {});
+          setSpeechListening(false);
           return;
         }
         speechBaseText = promptInput.value;
         speechFinalText = '';
         try {
+          if (await appendNativeSpeechResult()) return;
+          if (navigator.mediaDevices?.getUserMedia) {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            for (const track of stream.getTracks()) track.stop();
+          }
+          if (!speechRecognition) {
+            throw new Error('Speech-to-text is not available in this browser or WebView.');
+          }
           speechRecognition.lang = navigator.language || 'en-US';
           speechRecognition.start();
         } catch (error) {
-          statusEl.textContent = 'Voice input could not start. Try again.';
+          const message = String(error?.message || error || 'Try again.');
+          statusEl.textContent = `Voice input could not start. ${message}`;
           setSpeechListening(false);
         }
       });

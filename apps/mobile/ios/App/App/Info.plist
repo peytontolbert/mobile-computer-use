@@ -29,6 +29,10 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Computer Use connects to the local bridge running on your trusted computer.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Computer Use can use the microphone to dictate messages into the chat composer.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Computer Use can convert your speech into text before sending a message.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>UILaunchStoryboardName</key>
