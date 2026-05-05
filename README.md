@@ -23,11 +23,25 @@ Alternatively, start the bridge with `CURSOR_API_KEY` in its environment.
 
 ## Run
 
+Install from GitHub:
+
 ```bash
-python run_mobile_computer_use_bridge.py --host 0.0.0.0 --workspace /path/to/allowed/root
+python -m pip install git+https://github.com/peytontolbert/mobile-computer-use.git
+```
+
+Then start the bridge on the computer you want to control:
+
+```bash
+mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root
 ```
 
 Then open the printed mobile URL from your phone on the same trusted network.
+
+For local development from a cloned checkout, this is equivalent:
+
+```bash
+python run_mobile_computer_use_bridge.py --host 0.0.0.0 --workspace /path/to/allowed/root
+```
 
 ## Native Mobile Apps
 

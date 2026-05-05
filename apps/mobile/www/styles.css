@@ -34,6 +34,11 @@ main {
   margin-bottom: 26px;
 }
 
+.brand > div {
+  min-width: 0;
+  flex: 1;
+}
+
 .mark {
   display: grid;
   place-items: center;
@@ -102,6 +107,22 @@ button.secondary {
   color: #edf4f2;
 }
 
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  min-height: 40px;
+  aspect-ratio: 1;
+  margin-top: 0;
+  border: 1px solid #37505d;
+  border-radius: 999px;
+  background: #172128;
+  color: #d7e8ef;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -157,4 +178,57 @@ dd {
 
 .hidden {
   display: none !important;
+}
+
+.helpDialog {
+  width: min(calc(100vw - 32px), 520px);
+  padding: 0;
+  border: 1px solid #344853;
+  border-radius: 8px;
+  background: #11191f;
+  color: #edf4f2;
+}
+
+.helpDialog::backdrop {
+  background: rgba(2, 8, 12, 0.72);
+}
+
+.helpHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-bottom: 1px solid #2b3942;
+}
+
+.helpHeader h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.helpBody {
+  padding: 14px;
+}
+
+.helpBody p:first-child {
+  margin-top: 0;
+}
+
+pre {
+  overflow-x: auto;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #2b3942;
+  border-radius: 8px;
+  background: #0b1116;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

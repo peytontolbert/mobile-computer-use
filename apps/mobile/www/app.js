@@ -5,6 +5,9 @@ const bridgeUrlInput = document.getElementById('bridgeUrlInput');
 const connectButton = document.getElementById('connectButton');
 const openSavedButton = document.getElementById('openSavedButton');
 const clearSavedButton = document.getElementById('clearSavedButton');
+const helpButton = document.getElementById('helpButton');
+const helpDialog = document.getElementById('helpDialog');
+const closeHelpButton = document.getElementById('closeHelpButton');
 const statusEl = document.getElementById('status');
 const bridgeDetails = document.getElementById('bridgeDetails');
 
@@ -120,6 +123,18 @@ clearSavedButton.addEventListener('click', () => {
   bridgeUrlInput.value = '';
   bridgeDetails.classList.add('hidden');
   setStatus('Saved bridge cleared.');
+});
+
+helpButton.addEventListener('click', () => {
+  if (typeof helpDialog.showModal === 'function') {
+    helpDialog.showModal();
+  } else {
+    helpDialog.setAttribute('open', '');
+  }
+});
+
+closeHelpButton.addEventListener('click', () => {
+  helpDialog.close();
 });
 
 const savedBridgeUrl = localStorage.getItem(STORAGE_KEY) || '';
