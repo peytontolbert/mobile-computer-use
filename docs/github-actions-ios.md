@@ -2,8 +2,10 @@
 
 Xcode Cloud is Apple's official CI service, but Apple still documents Xcode as
 the normal entry point for the first workflow. For a no-Mac setup, this repo also
-includes a manual GitHub Actions workflow that runs on GitHub's hosted macOS
-runners and uploads to App Store Connect/TestFlight.
+includes a manual GitHub Actions workflow that runs on GitHub's hosted macOS 26
+runners and uploads to App Store Connect/TestFlight. The macOS 26 runner is
+required because App Store Connect now rejects iOS uploads built with the older
+iOS 18 SDK from macOS 15/Xcode 16.
 
 Workflow:
 
