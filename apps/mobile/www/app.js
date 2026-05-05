@@ -79,8 +79,9 @@ async function connect(value, shouldOpen = true) {
   connectInFlight = true;
   connectButton.disabled = true;
   openSavedButton.disabled = true;
+  let bridgeUrl = '';
   try {
-    const bridgeUrl = normalizeBridgeUrl(value);
+    bridgeUrl = normalizeBridgeUrl(value);
     bridgeUrlInput.value = bridgeUrl;
     setStatus('Checking bridge...', 'pending');
     const health = await checkBridge(bridgeUrl);
@@ -90,7 +91,13 @@ async function connect(value, shouldOpen = true) {
     if (shouldOpen) openBridge(bridgeUrl);
   } catch (error) {
     const message = error.name === 'AbortError' ? 'Bridge check timed out.' : error.message;
-    setStatus(message || 'Could not reach bridge.', 'error');
+    if (bridgeUrl && shouldOpen) {
+      localStorage.setItem(STORAGE_KEY, bridgeUrl);
+      setStatus(`${message || 'Could not check bridge.'} Opening anyway...`, 'pending');
+      window.setTimeout(() => openBridge(bridgeUrl), 300);
+    } else {
+      setStatus(message || 'Could not reach bridge.', 'error');
+    }
   } finally {
     connectInFlight = false;
     connectButton.disabled = false;

@@ -56,6 +56,8 @@ BRIDGE_SOURCE_FILES = [
 ]
 DEFAULT_ALLOWED_ORIGINS = {
     "https://peytontolbert.com",
+    "capacitor://localhost",
+    "ionic://localhost",
     "http://localhost:8797",
     "http://127.0.0.1:8797",
 }
