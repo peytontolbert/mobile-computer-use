@@ -34,6 +34,22 @@ mobile-computer-use-bridge --help
 
 Provider CLIs typically use their own environment (e.g. Cursor’s `CURSOR_API_KEY` when not using `cursor-agent login`). Configure those **before** starting the bridge in the same shell or via your process manager.
 
+## Native app permissions
+
+The Capacitor app uses a small native shell around the bridge-served `/mobile`
+page. Speech-to-text requires platform permissions because mobile WebViews may
+not expose browser `SpeechRecognition`.
+
+| Platform | Permission / usage string | Purpose |
+| -------- | ------------------------- | ------- |
+| iOS | `NSMicrophoneUsageDescription` | Let the user dictate chat text. |
+| iOS | `NSSpeechRecognitionUsageDescription` | Convert speech to text before sending. |
+| Android | `android.permission.RECORD_AUDIO` | Let the speech-recognition plugin listen after the user taps `Voice`. |
+
+These permissions are requested at runtime only when the user starts voice
+input. The dictated text is inserted into the composer for review before
+sending.
+
 ## Agent Kernel Lite path
 
 When developing alongside [Agent Kernel Lite](../README.md#agent-kernel-lite), set:

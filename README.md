@@ -67,6 +67,9 @@ terminal on your computer and type the code shown on your phone.
 ```
 
 After pairing, choose Codex or Cursor in the mobile UI and start a session.
+The chat composer includes a `Voice` button for speech-to-text. In the native
+iPhone/Android app it uses the Capacitor speech recognition plugin when the
+WebView does not expose browser speech recognition.
 
 ## Supported Providers
 
@@ -121,6 +124,8 @@ npm run sync
 ```
 
 Native projects are in `apps/mobile/android` and `apps/mobile/ios`.
+The native app declares microphone and speech-recognition permissions so the
+chat composer can request dictation access when the user taps `Voice`.
 
 For iPhone builds without a local Mac, use Xcode Cloud and TestFlight internal
 testing. See `docs/xcode-cloud.md`.

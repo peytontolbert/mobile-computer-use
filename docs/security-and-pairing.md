@@ -36,6 +36,18 @@ Use LAN binding **only on trusted networks** and only with pairing discipline (s
 
 Operations that touch the filesystem are limited to **`--workspace` roots**. The selected workspace for a session must be **exactly** one of the allowed roots or **inside** it (path-wise). This reduces accidental reads/writes outside intended trees; it is not a substitute for full OS sandboxing unless you also use provider-level sandbox options appropriate to your agents.
 
+## Speech-to-text privacy
+
+Voice input is local to the chat composer flow: the app requests microphone and
+speech-recognition access only after the user taps `Voice`, then inserts the
+recognized text into the textarea. The text is not sent to the bridge or an
+agent until the user taps `Send`.
+
+Browser speech recognition and native OS speech services may process audio
+according to the browser or platform provider's speech-recognition behavior.
+Users who do not want OS/browser speech services can keep using the keyboard or
+the system keyboard's built-in dictation controls.
+
 ## Codex sandbox flag
 
 `--sandbox` selects Codex CLI sandbox behavior (`danger-full-access`, `read-only`, `workspace-write`). The default favors environments where stricter sandboxes fail (e.g. some bridge/desktop setups). Tighten when your host supports it.

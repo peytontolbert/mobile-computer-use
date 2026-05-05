@@ -61,6 +61,24 @@ http://192.168.1.25:45731
 
 The app checks `/health` and opens `/mobile` when the bridge is reachable.
 
+## Speech-To-Text
+
+The bridge-served chat page includes a `Voice` button beside `Send`.
+
+- In browsers that expose `SpeechRecognition` / `webkitSpeechRecognition`, the
+  page uses the browser implementation.
+- In the native iOS/Android app, the page falls back to
+  `@capacitor-community/speech-recognition` when Capacitor exposes the plugin to
+  the WebView.
+- iOS declares `NSMicrophoneUsageDescription` and
+  `NSSpeechRecognitionUsageDescription`.
+- Android declares `android.permission.RECORD_AUDIO`.
+
+The app asks for microphone/speech access only after the user taps `Voice`.
+If neither browser nor native speech recognition is available, the button stays
+clickable and reports that speech-to-text is unavailable in that browser or
+WebView.
+
 ## Native Network Notes
 
 The initial shell allows HTTP navigation so local LAN bridge URLs work. Android
