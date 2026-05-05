@@ -91,7 +91,7 @@ Structured guides are in [`docs/README.md`](docs/README.md):
 - [Providers](docs/providers.md) — Codex, Cursor, tmux, future adapters  
 - [Testing](docs/testing.md) — running pytest and CI
 
-Release and iOS notes: [Xcode Cloud](docs/xcode-cloud.md), [GitHub Actions iOS](docs/github-actions-ios.md), [mobile release checklist](docs/mobile-release-ux-checklist.md).
+Release and iOS notes: [App Store Connect](docs/app-store-connect.md), [Xcode Cloud](docs/xcode-cloud.md), [GitHub Actions iOS](docs/github-actions-ios.md), [privacy](docs/privacy.md), [mobile release checklist](docs/mobile-release-ux-checklist.md).
 App Review notes and demo instructions are in [docs/app-review.md](docs/app-review.md).
 
 ## Local Development

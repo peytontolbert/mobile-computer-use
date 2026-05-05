@@ -38,6 +38,16 @@ Xcode Cloud runs that script after cloning. It installs Node if needed, runs
 `npm ci`, validates the app shell, and runs `npx cap sync ios` before Xcode
 builds the native project.
 
+Before enabling TestFlight distribution, confirm the app record and bundle ID
+exist in App Store Connect:
+
+```text
+com.peytontolbert.mobilecomputeruse
+```
+
+In Xcode Cloud, keep signing automatic and select the Apple Developer team that
+owns that bundle ID.
+
 ## Local iOS Work
 
 On a Mac:
