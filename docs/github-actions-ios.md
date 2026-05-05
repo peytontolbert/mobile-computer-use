@@ -15,10 +15,9 @@ Workflow:
 
 It runs only when manually started from GitHub Actions.
 
-The workflow now archives with automatic signing enabled. It uses your App Store
-Connect API key for both provisioning updates and export/upload, so the App
-Store Connect app record and bundle ID must exist before the first successful
-run.
+The workflow archives without code signing, then signs during export/upload with
+automatic provisioning updates. This avoids requiring a development provisioning
+profile or registered device on the GitHub runner.
 
 ## Required GitHub Secrets
 
@@ -85,7 +84,7 @@ If signing succeeds, the workflow uploads the archive to App Store Connect.
 After Apple finishes processing, the build appears in TestFlight for internal
 testing.
 
-If the archive step says no provisioning profile exists, confirm:
+If the export/upload step says no provisioning profile exists, confirm:
 
 - the App Store Connect app exists;
 - bundle ID `com.peytontolbert.mobilecomputeruse` exists in the developer
