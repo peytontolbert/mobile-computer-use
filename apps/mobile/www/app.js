@@ -32,25 +32,75 @@ function setStatus(message, mode = '') {
   statusEl.dataset.mode = mode;
 }
 
+function isProbablyPublicHost(hostname) {
+  const host = String(hostname || '').toLowerCase();
+  return Boolean(host)
+    && host !== 'localhost'
+    && !host.startsWith('127.')
+    && !host.startsWith('10.')
+    && !host.startsWith('192.168.')
+    && !/^172\.(1[6-9]|2\d|3[0-1])\./.test(host);
+}
+
+function connectionHint(error, bridgeUrl) {
+  const message = String(error?.message || error || '');
+  const hints = [];
+  if (error?.name === 'AbortError') {
+    hints.push('The bridge did not answer within 6 seconds.');
+  } else if (/Failed to fetch|Load failed|NetworkError/i.test(message)) {
+    hints.push('The phone could not reach the bridge from this network.');
+  } else if (/CORS|origin/i.test(message)) {
+    hints.push('The bridge rejected the app origin. Restart the latest bridge.');
+  } else {
+    hints.push(message || 'The bridge check failed.');
+  }
+  if (bridgeUrl) {
+    const url = new URL(bridgeUrl);
+    if (isProbablyPublicHost(url.hostname)) {
+      hints.push('This looks like an external address. Confirm port forwarding is intentional and the computer is trusted.');
+    } else {
+      hints.push('For LAN use, keep the phone and computer on the same Wi-Fi.');
+    }
+  }
+  hints.push('You can still try opening the bridge directly.');
+  return hints.join(' ');
+}
+
 function renderDetails(bridgeUrl, health) {
   const providers = Array.isArray(health.providers) ? health.providers : [];
-  const providerText = providers
-    .map((provider) => `${provider.name || provider.id}: ${provider.available ? 'available' : 'missing'}`)
-    .join('\n');
   const workspaces = Array.isArray(health.allowed_workspaces) ? health.allowed_workspaces.join('\n') : '';
   bridgeDetails.innerHTML = '';
-  for (const [label, value] of [
+  const rows = [
     ['Bridge', bridgeUrl],
     ['Protocol', health.protocol || 'unknown'],
-    ['Providers', providerText || 'unknown'],
     ['Workspaces', workspaces || 'unknown'],
-  ]) {
+    ['Network', isProbablyPublicHost(new URL(bridgeUrl).hostname) ? 'External address. Use only with intentional port forwarding.' : 'Local/private network address.'],
+  ];
+  for (const [label, value] of rows) {
     const term = document.createElement('dt');
     term.textContent = label;
     const detail = document.createElement('dd');
     detail.textContent = value;
     bridgeDetails.append(term, detail);
   }
+  const providerTerm = document.createElement('dt');
+  providerTerm.textContent = 'Providers';
+  const providerDetail = document.createElement('dd');
+  const providerList = document.createElement('div');
+  providerList.className = 'providerList';
+  for (const provider of providers) {
+    const badge = document.createElement('div');
+    badge.className = 'providerBadge';
+    badge.dataset.available = String(Boolean(provider.available));
+    const name = document.createElement('strong');
+    name.textContent = provider.name || provider.id || 'Provider';
+    const state = document.createElement('span');
+    state.textContent = provider.available ? 'Ready' : 'Missing';
+    badge.append(name, state);
+    providerList.appendChild(badge);
+  }
+  providerDetail.appendChild(providerList);
+  bridgeDetails.append(providerTerm, providerDetail);
   bridgeDetails.classList.remove('hidden');
 }
 
@@ -93,7 +143,7 @@ async function connect(value, shouldOpen = true) {
     setStatus('Bridge is reachable.', 'ok');
     if (shouldOpen) openBridge(bridgeUrl);
   } catch (error) {
-    const message = error.name === 'AbortError' ? 'Bridge check timed out.' : error.message;
+    const message = connectionHint(error, bridgeUrl);
     if (bridgeUrl && shouldOpen) {
       localStorage.setItem(STORAGE_KEY, bridgeUrl);
       setStatus(`${message || 'Could not check bridge.'} Opening anyway...`, 'pending');
@@ -140,5 +190,6 @@ closeHelpButton.addEventListener('click', () => {
 const savedBridgeUrl = localStorage.getItem(STORAGE_KEY) || '';
 if (savedBridgeUrl) {
   bridgeUrlInput.value = savedBridgeUrl;
+  setStatus('Reconnecting to saved bridge...', 'pending');
   connect(savedBridgeUrl, false);
 }

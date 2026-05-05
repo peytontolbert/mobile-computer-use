@@ -64,6 +64,10 @@ p {
   line-height: 1.45;
 }
 
+a {
+  color: #9ed8ff;
+}
+
 form {
   display: grid;
   gap: 8px;
@@ -149,6 +153,11 @@ button.secondary {
   color: #ffd0d5;
 }
 
+.status[data-mode="pending"] {
+  border-color: #45616e;
+  color: #d9edf5;
+}
+
 .details {
   margin: 12px 0 0;
   padding: 12px;
@@ -174,6 +183,30 @@ dd {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   line-height: 1.4;
+}
+
+.providerList {
+  display: grid;
+  gap: 8px;
+}
+
+.providerBadge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid #2b3942;
+  border-radius: 8px;
+  background: #151d23;
+}
+
+.providerBadge[data-available="true"] {
+  border-color: #2d6d49;
+}
+
+.providerBadge[data-available="false"] {
+  border-color: #833941;
 }
 
 .hidden {

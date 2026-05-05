@@ -52,9 +52,16 @@
       <p>Install the bridge on the computer you want to control, then start it on a trusted network.</p>
       <pre><code>python -m pip install git+https://github.com/peytontolbert/mobile-computer-use.git
 mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</code></pre>
+      <p>Install and sign in to at least one supported provider before starting the bridge.</p>
+      <pre><code>npm install -g @openai/codex
+codex
+
+curl https://cursor.com/install -fsS | bash
+cursor-agent login</code></pre>
       <p>Enter the printed URL here. It should look like this:</p>
       <pre><code>http://192.168.1.25:45731</code></pre>
-      <p>Keep the bridge running while you use the app.</p>
+      <p>For remote access, you can use an external IP or hostname if you intentionally port forward the bridge port. Only do this on networks and computers you trust.</p>
+      <p>Keep the bridge running while you use the app. Source and setup docs are on GitHub: <a href="https://github.com/peytontolbert/mobile-computer-use" rel="noreferrer">mobile-computer-use</a>.</p>
     </div>
   </dialog>
 
