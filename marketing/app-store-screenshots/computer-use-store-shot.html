@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Computer Use App Store Screenshot</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1418;
+      color: #edf4f2;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #0f1418;
+    }
+
+    .shot {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(37, 99, 235, 0.18), rgba(15, 20, 24, 0) 30%),
+        #0f1418;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top {
+      padding: 7.4vh 7vw 2vh;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 76px;
+      aspect-ratio: 1;
+      border: 1px solid #3d5865;
+      border-radius: 14px;
+      background: #172128;
+      color: #9ed8ff;
+      font-size: 30px;
+      font-weight: 900;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(42px, 6vw, 82px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 16px 0 0;
+      max-width: 960px;
+      color: #c2d0d6;
+      font-size: clamp(24px, 3vw, 42px);
+      line-height: 1.22;
+    }
+
+    .device {
+      flex: 1;
+      margin: 2vh auto 0;
+      width: min(86vw, 1020px);
+      min-height: 0;
+      border: 1px solid #344853;
+      border-bottom: 0;
+      border-radius: 38px 38px 0 0;
+      background: #101418;
+      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .appHeader {
+      padding: 24px;
+      border-bottom: 1px solid #26323a;
+      background: #101418;
+    }
+
+    .appTitle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .appTitle strong {
+      font-size: clamp(22px, 2.6vw, 34px);
+      line-height: 1.1;
+    }
+
+    .status {
+      margin-top: 8px;
+      color: #aebbc2;
+      font-size: clamp(16px, 1.8vw, 24px);
+    }
+
+    .nav {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .button {
+      border-radius: 12px;
+      background: #2563eb;
+      color: #fff;
+      font-weight: 800;
+      padding: 14px 18px;
+      font-size: clamp(15px, 1.7vw, 22px);
+      white-space: nowrap;
+    }
+
+    .button.secondary {
+      background: #26343d;
+    }
+
+    .button.danger {
+      background: #5f262b;
+      color: #ffe5e8;
+    }
+
+    .navTitle {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #edf4f2;
+      font-size: clamp(17px, 2vw, 28px);
+      font-weight: 800;
+    }
+
+    .content {
+      flex: 1;
+      min-height: 0;
+      padding: 22px;
+      overflow: hidden;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .field,
+    .card,
+    .message {
+      border: 1px solid #2c3a43;
+      border-radius: 14px;
+      background: #151d23;
+      padding: 16px;
+    }
+
+    .field span,
+    .meta {
+      display: block;
+      color: #93a5af;
+      font-size: clamp(13px, 1.5vw, 18px);
+      font-weight: 800;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .field strong,
+    .card strong {
+      display: block;
+      color: #edf4f2;
+      font-size: clamp(18px, 2vw, 26px);
+      line-height: 1.2;
+    }
+
+    .card {
+      margin-top: 14px;
+    }
+
+    .card p,
+    .message p {
+      margin: 6px 0 0;
+      color: #c1d0d7;
+      font-size: clamp(15px, 1.7vw, 22px);
+      line-height: 1.35;
+    }
+
+    .messages {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .message.user {
+      margin-left: 9%;
+      background: #173422;
+      border-color: #28593a;
+    }
+
+    .message.agent {
+      margin-right: 9%;
+      background: #111c24;
+      border-color: #28485b;
+    }
+
+    .composer {
+      margin-top: 16px;
+      border-top: 1px solid #26323a;
+      padding-top: 16px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+    }
+
+    .input {
+      border: 1px solid #33434c;
+      border-radius: 12px;
+      background: #182128;
+      color: #aebbc2;
+      padding: 14px;
+      font-size: clamp(15px, 1.7vw, 22px);
+    }
+
+    .desktopOnly {
+      display: none;
+    }
+
+    @media (min-aspect-ratio: 3/4) {
+      .top {
+        padding-top: 5vh;
+      }
+
+      .device {
+        width: min(88vw, 1560px);
+      }
+
+      .desktopOnly {
+        display: block;
+      }
+
+      .ipadLayout {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+        gap: 18px;
+      }
+
+      .messages {
+        gap: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="shot">
+    <div class="top">
+      <div class="brand">
+        <div class="mark">CU</div>
+        <h1>Computer Use</h1>
+      </div>
+      <p class="subtitle">Start Codex or Cursor on your computer and control sessions from your phone.</p>
+    </div>
+
+    <div class="device">
+      <div class="appHeader">
+        <div class="appTitle">
+          <strong>Computer Use</strong>
+          <span class="button secondary">Approved</span>
+        </div>
+        <div class="status">Connected to local bridge · Codex and Cursor available</div>
+        <div class="nav">
+          <span class="button secondary">Back</span>
+          <div class="navTitle">Frontend release pass</div>
+          <span class="button secondary">Rename</span>
+        </div>
+      </div>
+
+      <div class="content ipadLayout">
+        <div>
+          <div class="grid">
+            <div class="field">
+              <span>Provider</span>
+              <strong>Cursor</strong>
+            </div>
+            <div class="field">
+              <span>Workspace</span>
+              <strong>/data/mobile-computer-use</strong>
+            </div>
+          </div>
+
+          <div class="card">
+            <strong>Active sessions</strong>
+            <p>Codex bugfix · running</p>
+            <p>Cursor UI polish · ready</p>
+          </div>
+
+          <div class="card desktopOnly">
+            <strong>Pair once, use anywhere</strong>
+            <p>Approve with a desktop code, then reconnect from the app or mobile browser.</p>
+          </div>
+        </div>
+
+        <div>
+          <div class="messages">
+            <div class="message user">
+              <span class="meta">You</span>
+              <p>Refine the mobile app navigation and harden release readiness.</p>
+            </div>
+            <div class="message agent">
+              <span class="meta">Cursor</span>
+              <p>Updated the sticky navigation, preserved session controls, and prepared the next TestFlight build.</p>
+            </div>
+            <div class="message agent">
+              <span class="meta">Codex</span>
+              <p>Security pass complete. Bridge approval now binds the desktop prompt to the phone in hand.</p>
+            </div>
+          </div>
+          <div class="composer">
+            <div class="input">Ask the agent to continue...</div>
+            <div class="button">Send</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</body>
+</html>
