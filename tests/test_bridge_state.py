@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import base64
 import sys
 import time
+from pathlib import Path
 
 import pytest
 
@@ -56,6 +58,44 @@ def test_workspace_allowed_stays_inside_configured_roots(tmp_path, isolated_conf
     assert not state.workspace_is_allowed(outside)
     with pytest.raises(ValueError, match="workspace is not allowed"):
         state.workspace_allowed(str(outside))
+
+
+def test_mobile_prompt_with_image_attachment_saves_inside_workspace(tmp_path, isolated_config_dir) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    state = BridgeState(bridge_namespace(isolated_config_dir, workspace=[str(workspace)]))
+    image_data = b"\x89PNG\r\n\x1a\n"
+
+    prompt = state.mobile_prompt_with_attachments(
+        "Describe this.",
+        [{
+            "name": "../screen shot.png",
+            "mime_type": "image/png",
+            "data": base64.b64encode(image_data).decode("ascii"),
+        }],
+        workspace,
+    )
+
+    assert prompt.startswith("Describe this.")
+    saved_line = next(line for line in prompt.splitlines() if line.startswith("- "))
+    saved_path = Path(saved_line[2:])
+    assert saved_path.is_file()
+    assert saved_path.read_bytes() == image_data
+    assert saved_path.is_relative_to(workspace.resolve())
+    assert ".." not in saved_path.name
+
+
+def test_mobile_prompt_rejects_unsupported_attachment_type(tmp_path, isolated_config_dir) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    state = BridgeState(bridge_namespace(isolated_config_dir, workspace=[str(workspace)]))
+
+    with pytest.raises(ValueError, match="unsupported attachment type"):
+        state.mobile_prompt_with_attachments(
+            "",
+            [{"name": "note.txt", "mime_type": "text/plain", "data": "SGVsbG8="}],
+            workspace,
+        )
 
 
 def test_health_payload_shape(isolated_config_dir) -> None:

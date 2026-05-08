@@ -46,7 +46,15 @@ except ImportError:
 
 PROTOCOL = "agent-kernel-computer-bridge/v1"
 LEGACY_PROTOCOL = "agent-kernel-codex-bridge/v1"
-MAX_JSON_BODY_BYTES = 128 * 1024
+MAX_JSON_BODY_BYTES = 8 * 1024 * 1024
+MAX_MOBILE_ATTACHMENTS = 4
+MAX_MOBILE_ATTACHMENT_BYTES = 2 * 1024 * 1024
+ALLOWED_MOBILE_ATTACHMENT_MIME_TYPES = {
+    "image/gif": ".gif",
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
 MOBILE_PAGE_FILE = Path(__file__).resolve().parents[1] / "web" / "computer-use-mobile.html"
 PAIRING_GRANT_TTL_SECONDS = 60 * 60 * 24 * 30
 MOBILE_DEFAULT_GRANT_DURATION = "30d"
@@ -1125,6 +1133,50 @@ class BridgeState:
         allowed_text = ", ".join(str(item) for item in self.allowed_workspaces)
         raise ValueError(f"workspace is not allowed by this bridge: {workspace} (allowed: {allowed_text})")
 
+    def mobile_prompt_with_attachments(self, prompt: str, attachments: Any, workspace: Path) -> str:
+        prompt = str(prompt or "").strip()
+        if not attachments:
+            return prompt
+        if not isinstance(attachments, list):
+            raise ValueError("attachments must be a list")
+        if len(attachments) > MAX_MOBILE_ATTACHMENTS:
+            raise ValueError(f"too many attachments; maximum is {MAX_MOBILE_ATTACHMENTS}")
+        workspace = self.workspace_allowed(str(workspace))
+        attachment_dir = workspace / ".mobile-computer-use" / "attachments"
+        saved_paths: list[str] = []
+        for index, attachment in enumerate(attachments, start=1):
+            if not isinstance(attachment, dict):
+                raise ValueError("each attachment must be an object")
+            mime_type = str(attachment.get("mime_type") or attachment.get("type") or "").strip().lower()
+            suffix = ALLOWED_MOBILE_ATTACHMENT_MIME_TYPES.get(mime_type)
+            if not suffix:
+                raise ValueError(f"unsupported attachment type: {mime_type or 'missing'}")
+            raw_data = str(attachment.get("data") or attachment.get("base64") or "").strip()
+            if "," in raw_data and raw_data.split(",", 1)[0].startswith("data:"):
+                raw_data = raw_data.split(",", 1)[1]
+            if not raw_data:
+                raise ValueError(f"attachment {index} is empty")
+            try:
+                data = base64.b64decode(raw_data.encode("ascii"), validate=True)
+            except Exception as exc:
+                raise ValueError(f"attachment {index} is not valid base64") from exc
+            if not data:
+                raise ValueError(f"attachment {index} is empty")
+            if len(data) > MAX_MOBILE_ATTACHMENT_BYTES:
+                raise ValueError(f"attachment {index} is too large")
+            attachment_dir.mkdir(parents=True, exist_ok=True)
+            stem = re.sub(r"[^A-Za-z0-9_.-]+", "-", str(attachment.get("name") or f"attachment-{index}")).strip(".-")
+            stem = (stem or f"attachment-{index}")[:80]
+            if Path(stem).suffix.lower() in set(ALLOWED_MOBILE_ATTACHMENT_MIME_TYPES.values()):
+                stem = Path(stem).stem or f"attachment-{index}"
+            path = attachment_dir / f"{int(time.time())}-{secrets.token_urlsafe(8)}-{stem}{suffix}"
+            path.write_bytes(data)
+            saved_paths.append(str(path))
+        attachment_text = "\n".join(f"- {path}" for path in saved_paths)
+        if prompt:
+            return f"{prompt}\n\nAttached files:\n{attachment_text}"
+        return f"Attached files:\n{attachment_text}"
+
     def ensure_workspace_git_repo(self, workspace: Path) -> bool:
         existing = subprocess.run(
             ["git", "-C", str(workspace), "rev-parse", "--show-toplevel"],
@@ -1539,7 +1591,11 @@ class BridgeState:
         if provider not in {"codex", "cursor"}:
             raise ValueError(f"{provider} session orchestration is not implemented yet")
         workspace = self.workspace_allowed(str(payload.get("workspace") or self.allowed_workspaces[0]))
-        prompt = str(payload.get("prompt") or "").strip()
+        prompt = self.mobile_prompt_with_attachments(
+            str(payload.get("prompt") or "").strip(),
+            payload.get("attachments"),
+            workspace,
+        )
         model = str(payload.get("model") or "").strip()
         name = str(payload.get("name") or "").strip()
         if not prompt:
@@ -1662,8 +1718,6 @@ class BridgeState:
         prompt = str(payload.get("prompt") or "").strip()
         if not parent_id:
             raise ValueError("session_id is required")
-        if not prompt:
-            raise ValueError("prompt is required")
         with self.sessions_lock:
             parent = self.sessions.get(parent_id)
             if not parent:
@@ -1674,11 +1728,14 @@ class BridgeState:
                     raise ValueError("cannot send follow-up while parent session is running")
             elif provider != "tmux":
                 raise ValueError(f"{provider} follow-up orchestration is not implemented yet")
-            workspace = Path(parent["workspace"]) if provider in {"codex", "cursor"} else Path(".")
+            workspace = Path(parent.get("workspace") or ".")
             model = str(payload.get("model") or parent.get("model") or "").strip() if provider in {"codex", "cursor"} else ""
             codex_session_id = str(parent.get("provider_session_id") or parent.get("codex_session_id") or "") if provider in {"codex", "cursor"} else ""
             is_ready = parent.get("status") == "ready" if provider in {"codex", "cursor"} else False
             existing_events = list(parent.get("events") or []) if provider in {"codex", "cursor"} else []
+        prompt = self.mobile_prompt_with_attachments(prompt, payload.get("attachments"), workspace)
+        if not prompt:
+            raise ValueError("prompt is required")
         if provider == "tmux":
             return self.send_tmux_input(parent_id, prompt)
         if provider not in {"codex", "cursor"}:
@@ -1895,7 +1952,7 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
   <title>Agent Kernel Mobile Computer Use</title>
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #101418; color: #eef4f2; }
+    body { --composer-height: 0px; margin: 0; min-height: 100vh; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #101418; color: #eef4f2; }
     main { padding: 14px; }
     header { padding: calc(14px + env(safe-area-inset-top, 0px)) 14px 14px; border-bottom: 1px solid #26323a; position: sticky; top: 0; background: #101418; z-index: 3; }
     h1 { font-size: 18px; margin: 0 0 4px; }
@@ -1926,7 +1983,7 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     .danger { background: #5f262b !important; color: #ffe5e8 !important; }
     .session strong { display: block; margin-bottom: 4px; }
     .hidden { display: none !important; }
-    .messages { display: flex; flex-direction: column; gap: 8px; padding-bottom: 150px; }
+    .messages { display: flex; flex-direction: column; gap: 8px; padding-bottom: calc(var(--composer-height) + 28px); }
     .message { border: 1px solid #2c3a43; border-radius: 10px; padding: 10px; background: #151d23; }
     .message.user { margin-left: 22px; background: #173422; border-color: #28593a; }
     .message.agent { margin-right: 22px; background: #111c24; border-color: #28485b; }
@@ -1948,8 +2005,13 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #0b1014; border: 1px solid #26323a; padding: 10px; border-radius: 8px; margin: 8px 0 0; }
     .statusPill { display: inline-block; padding: 2px 7px; border-radius: 999px; background: #22313a; color: #c7d6dd; font-size: 12px; margin-left: 6px; }
     .approvalCode { display: inline-block; margin-top: 8px; padding: 6px 10px; border: 1px solid #45616e; border-radius: 8px; background: #0b1014; color: #ffffff; font-size: 20px; font-weight: 800; letter-spacing: 0.12em; }
-    form { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px max(14px, env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px)); background: #101418; border-top: 1px solid #26323a; }
-    .composerActions { display: grid; grid-template-columns: minmax(92px, auto) 1fr; gap: 8px; }
+    form { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; padding: 14px max(14px, env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px)); background: #101418; border-top: 1px solid #26323a; }
+    .attachmentTray { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; }
+    .attachmentItem { position: relative; flex: 0 0 70px; width: 70px; height: 70px; border: 1px solid #33434d; border-radius: 8px; overflow: hidden; background: #0b1014; }
+    .attachmentItem img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .attachmentItem button { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; min-height: 24px; padding: 0; border-radius: 999px; background: rgba(11, 16, 20, 0.82); border-color: #4a5962; color: #ffffff; font-size: 16px; line-height: 1; }
+    .attachmentItem button:disabled { opacity: 1; }
+    .composerActions { display: grid; grid-template-columns: minmax(78px, auto) minmax(78px, auto) 1fr; gap: 8px; }
     .composerActions button { margin-top: 8px; }
     #speechButton[data-listening="true"] { background: #0f766e; }
   </style>
@@ -2020,7 +2082,10 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
   </main>
   <form id="messageForm" class="hidden">
     <textarea id="promptInput" placeholder="Message Codex..."></textarea>
+    <input id="imageInput" class="hidden" type="file" accept="image/*" multiple>
+    <div id="attachmentTray" class="attachmentTray hidden"></div>
     <div class="composerActions">
+      <button id="imageButton" class="secondary" type="button">Images</button>
       <button id="speechButton" class="secondary" type="button">Voice</button>
       <button id="sendButton" type="submit">Send</button>
     </div>
@@ -2042,6 +2107,8 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
     let activeSessionProvider = 'codex';
     let messageInFlight = false;
     let startTerminalInFlight = false;
+    let pendingImages = [];
+    const actionDetailsOpen = new Map();
     const statusEl = document.getElementById('status');
     const approveButton = document.getElementById('approveButton');
     const approvalDurationSelect = document.getElementById('approvalDurationSelect');
@@ -2062,6 +2129,9 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
     const readinessPanel = document.getElementById('readinessPanel');
     const messages = document.getElementById('messages');
     const promptInput = document.getElementById('promptInput');
+    const imageInput = document.getElementById('imageInput');
+    const imageButton = document.getElementById('imageButton');
+    const attachmentTray = document.getElementById('attachmentTray');
     const speechButton = document.getElementById('speechButton');
     const sendButton = document.getElementById('sendButton');
     const chatTitle = document.getElementById('chatTitle');
@@ -2076,6 +2146,14 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
     let speechListening = false;
     let speechBaseText = '';
     let speechFinalText = '';
+    function updateComposerSpacing() {
+      const height = messageForm.classList.contains('hidden') ? 0 : messageForm.offsetHeight;
+      document.body.style.setProperty('--composer-height', `${height}px`);
+    }
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(updateComposerSpacing).observe(messageForm);
+    }
+    window.addEventListener('resize', updateComposerSpacing);
     function sessionDisplayName(session) {
       return String(session?.name || session?.tmux?.title || session?.workspace || 'Workspace').trim();
     }
@@ -2198,6 +2276,96 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
         }
       });
     }
+    function renderImageAttachments() {
+      attachmentTray.innerHTML = '';
+      attachmentTray.classList.toggle('hidden', pendingImages.length === 0);
+      for (const [index, image] of pendingImages.entries()) {
+        const item = document.createElement('div');
+        item.className = 'attachmentItem';
+        const thumbnail = document.createElement('img');
+        thumbnail.src = image.preview;
+        thumbnail.alt = image.name || 'Attached image';
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.textContent = 'x';
+        removeButton.title = 'Remove image';
+        removeButton.addEventListener('click', () => {
+          pendingImages.splice(index, 1);
+          renderImageAttachments();
+        });
+        item.append(thumbnail, removeButton);
+        attachmentTray.append(item);
+      }
+      requestAnimationFrame(updateComposerSpacing);
+    }
+    function readImageFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Could not read image.'));
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.readAsDataURL(file);
+      });
+    }
+    function loadImage(dataUrl) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('Could not load image.'));
+        image.src = dataUrl;
+      });
+    }
+    async function compressImageFile(file) {
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Only image files can be attached.');
+      }
+      const dataUrl = await readImageFile(file);
+      const image = await loadImage(dataUrl);
+      const maxSide = 1280;
+      const scale = Math.min(1, maxSide / Math.max(image.width || maxSide, image.height || maxSide));
+      const width = Math.max(1, Math.round((image.width || maxSide) * scale));
+      const height = Math.max(1, Math.round((image.height || maxSide) * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Image processing is not available.');
+      context.drawImage(image, 0, 0, width, height);
+      const mimeType = 'image/jpeg';
+      let output = canvas.toDataURL(mimeType, 0.82);
+      for (const quality of [0.7, 0.58, 0.46]) {
+        if (output.length < 2600000) break;
+        output = canvas.toDataURL(mimeType, quality);
+      }
+      if (output.length >= 2600000) {
+        throw new Error('Image is too large. Try a smaller screenshot or photo.');
+      }
+      return {
+        name: file.name || 'image',
+        mime_type: mimeType,
+        data: output.split(',', 2)[1] || '',
+        preview: output,
+      };
+    }
+    imageButton.addEventListener('click', () => {
+      imageInput.click();
+    });
+    imageInput.addEventListener('change', async () => {
+      const files = Array.from(imageInput.files || []);
+      imageInput.value = '';
+      if (!files.length) return;
+      try {
+        const slots = Math.max(0, 4 - pendingImages.length);
+        for (const file of files.slice(0, slots)) {
+          pendingImages.push(await compressImageFile(file));
+        }
+        renderImageAttachments();
+        if (files.length > slots) {
+          statusEl.textContent = 'Only four images can be attached to one message.';
+        }
+      } catch (error) {
+        statusEl.textContent = error.message || 'Could not attach image.';
+      }
+    });
     function randomToken(prefix = '') {
       const bytes = new Uint8Array(32);
       crypto.getRandomValues(bytes);
@@ -2243,6 +2411,7 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
     workspaceInput.addEventListener('change', () => {
       localStorage.setItem('agent-kernel-mobile-workspace', workspaceInput.value.trim());
     });
+    promptInput.addEventListener('input', updateComposerSpacing);
     providerSelect.addEventListener('change', () => {
       activeSessionProvider = providerSelect.value || 'codex';
       promptInput.placeholder = `Message ${providerDisplayName(activeSessionProvider)}...`;
@@ -2257,6 +2426,7 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
       newView.classList.toggle('hidden', next !== 'new');
       chatView.classList.toggle('hidden', next !== 'chat');
       messageForm.classList.toggle('hidden', next !== 'chat');
+      requestAnimationFrame(updateComposerSpacing);
       topNav.classList.toggle('hidden', next === 'list');
       navRenameButton.classList.toggle('hidden', next !== 'chat');
       if (next !== 'chat') navInterruptButton.classList.add('hidden');
@@ -2455,6 +2625,9 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
         }
       }
     }
+    function actionDetailKey(event) {
+      return `${activeSessionId || 'session'}:${event?.index ?? ''}:${event?.time ?? ''}`;
+    }
     function renderEvent(event, provider = activeSessionProvider) {
       const model = messageModel(event, provider);
       if (!model || !model.text) return null;
@@ -2463,6 +2636,12 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
       if (model.role === 'action') {
         const details = document.createElement('details');
         details.className = 'actionDetails';
+        const detailKey = actionDetailKey(event);
+        details.dataset.detailKey = detailKey;
+        if (actionDetailsOpen.get(detailKey)) details.open = true;
+        details.addEventListener('toggle', () => {
+          actionDetailsOpen.set(detailKey, details.open);
+        });
         const summary = document.createElement('summary');
         const label = document.createElement('span');
         label.className = 'actionLabel';
@@ -2521,7 +2700,10 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
       if (wasNearBottom) window.setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 0);
     }
     function setAllActionDetails(open) {
-      for (const item of messages.querySelectorAll('.actionDetails')) item.open = Boolean(open);
+      for (const item of messages.querySelectorAll('.actionDetails')) {
+        item.open = Boolean(open);
+        if (item.dataset.detailKey) actionDetailsOpen.set(item.dataset.detailKey, Boolean(open));
+      }
     }
     async function openSession(sessionId) {
       activeSessionId = sessionId;
@@ -2825,15 +3007,18 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
       event.preventDefault();
       if (messageInFlight) return;
       const prompt = promptInput.value.trim();
-      if (!prompt || sendButton.disabled) return;
+      if ((!prompt && pendingImages.length === 0) || sendButton.disabled) return;
       messageInFlight = true;
+      const attachments = pendingImages.map(({ name, mime_type, data }) => ({ name, mime_type, data }));
       promptInput.value = '';
+      pendingImages = [];
+      renderImageAttachments();
       sendButton.disabled = true;
       let resultStatus = '';
       let resultProvider = providerSelect.value || 'codex';
       const workspace = workspaceInput.value.trim() || workspaceRootSelect.value;
       localStorage.setItem('agent-kernel-mobile-workspace', workspace);
-      const body = { workspace, provider: providerSelect.value || 'codex', prompt };
+      const body = { workspace, provider: providerSelect.value || 'codex', prompt, attachments };
       try {
         const result = activeSessionId
           ? await api('/mobile/api/send', { ...body, session_id: activeSessionId })
@@ -2846,6 +3031,11 @@ mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre
         window.setTimeout(refresh, 1200);
       } catch (error) {
         promptInput.value = prompt;
+        pendingImages = attachments.map((attachment) => ({
+          ...attachment,
+          preview: `data:${attachment.mime_type};base64,${attachment.data}`,
+        }));
+        renderImageAttachments();
         statusEl.textContent = error.message || 'Message failed.';
       } finally {
         messageInFlight = false;
