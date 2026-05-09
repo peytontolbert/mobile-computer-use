@@ -268,6 +268,7 @@ class BridgeState:
         self.timeout = int(args.timeout)
         self.sandbox = str(args.sandbox)
         self.approval_policy = str(args.approval_policy)
+        self.desktop_approval_handler = getattr(args, "desktop_approval_handler", None)
         self.allowed_origins = set(DEFAULT_ALLOWED_ORIGINS)
         for origin in args.allow_origin:
             self.allowed_origins.add(str(origin).rstrip("/"))
@@ -574,6 +575,15 @@ class BridgeState:
         return ":".join(digest[index:index + 2] for index in range(0, 16, 2))
 
     def approve_pairing_on_computer(self, request: dict[str, Any]) -> None:
+        if callable(self.desktop_approval_handler):
+            answer = str(self.desktop_approval_handler("browser", {
+                "origin": request.get("origin"),
+                "code": request.get("code"),
+                "fingerprint": self.pairing_fingerprint(request),
+            }) or "").strip()
+            if answer != "APPROVE":
+                raise ValueError("pairing was rejected on the computer")
+            return
         if not sys.stdin.isatty():
             raise ValueError("local computer approval is required, but this bridge has no interactive terminal")
         with self.pairing_approval_lock:
@@ -632,12 +642,44 @@ class BridgeState:
             }
         if not re.fullmatch(r"\d{6}", approval_code):
             raise ValueError("mobile approval code is missing")
+        device_secret_hash = sha256_hex(device_secret)
+        if callable(self.desktop_approval_handler):
+            answer = str(self.desktop_approval_handler("mobile", {
+                "approval_code": approval_code,
+                "device_name": device_name,
+                "device_id": device_id,
+                "device_fingerprint": device_secret_hash[:16],
+                "duration": "unlimited" if not self.mobile_grant_ttl_seconds(duration) else duration,
+            }) or "").strip()
+            if not secrets.compare_digest(answer, approval_code):
+                raise ValueError("mobile console was rejected on the computer")
+            grant_id = f"mobile_{secrets.token_urlsafe(18)}"
+            ttl = self.mobile_grant_ttl_seconds(duration)
+            expires_at = time.time() + ttl if ttl else 0
+            grant = {
+                "grant_id": grant_id,
+                "created_at": time.time(),
+                "expires_at": expires_at,
+                "duration": str(duration or MOBILE_DEFAULT_GRANT_DURATION),
+                "device_id": device_id,
+                "device_name": device_name,
+                "device_secret_hash": device_secret_hash,
+            }
+            self.mobile_grants[grant_id] = grant
+            self.save_mobile_grants()
+            return {
+                "status": "approved",
+                "grant_id": grant_id,
+                "device_id": device_id,
+                "code": approval_code,
+                "expires_at": grant["expires_at"],
+                "duration": grant["duration"],
+            }
         if not sys.stdin.isatty():
             raise ValueError("local computer approval is required, but this bridge has no interactive terminal")
         grant_id = f"mobile_{secrets.token_urlsafe(18)}"
         ttl = self.mobile_grant_ttl_seconds(duration)
         expires_at = time.time() + ttl if ttl else 0
-        device_secret_hash = sha256_hex(device_secret)
         with self.pairing_approval_lock:
             print("", flush=True)
             print("Approve Agent Kernel mobile console?", flush=True)
@@ -2040,9 +2082,11 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     <section id="listView">
       <details class="panelBox" open>
         <summary>Setup</summary>
-        <p class="muted">Install the bridge on your computer, then connect from this app or a browser.</p>
-        <pre>python -m pip install git+https://github.com/peytontolbert/mobile-computer-use.git
-mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</pre>
+        <p class="muted">Download the desktop app for Windows, macOS, or Linux, then connect from this app or a browser.</p>
+        <pre>https://github.com/peytontolbert/mobile-computer-use/releases
+
+./mobile-computer-use
+.\mobile-computer-use.exe</pre>
         <p class="muted">Use Codex, Cursor, or both. GitHub: https://github.com/peytontolbert/mobile-computer-use</p>
       </details>
       <div id="readinessPanel" class="panelBox hidden"></div>

@@ -11,8 +11,12 @@ dependencies = [
 dev = [
   "pytest>=8",
 ]
+release = [
+  "pyinstaller>=6.0",
+]
 
 [project.scripts]
+mobile-computer-use = "mobile_computer_use.launcher:main"
 mobile-computer-use-bridge = "mobile_computer_use.bridge:main"
 
 [tool.setuptools]

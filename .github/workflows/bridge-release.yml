@@ -1,0 +1,184 @@
+name: Bridge Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version without the v prefix"
+        required: true
+        default: "0.1.0"
+      prerelease:
+        description: "Mark the GitHub release as a prerelease"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: windows-x64
+            app_executable: mobile-computer-use.exe
+            executable: mobile-computer-use-bridge.exe
+            archive: mobile-computer-use-bridge-windows-x64.zip
+          - os: macos-14
+            label: macos-arm64
+            app_executable: mobile-computer-use
+            executable: mobile-computer-use-bridge
+            archive: mobile-computer-use-bridge-macos-arm64.tar.gz
+          - os: macos-13
+            label: macos-x64
+            app_executable: mobile-computer-use
+            executable: mobile-computer-use-bridge
+            archive: mobile-computer-use-bridge-macos-x64.tar.gz
+          - os: ubuntu-latest
+            label: linux-x64
+            app_executable: mobile-computer-use
+            executable: mobile-computer-use-bridge
+            archive: mobile-computer-use-bridge-linux-x64.tar.gz
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev,release]"
+
+      - name: Remove obsolete pathlib backport
+        run: python -m pip uninstall -y pathlib || true
+
+      - name: Install Linux GUI dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y python3-tk
+
+      - name: Run tests
+        run: python -m pytest
+
+      - name: Build standalone CLI bridge
+        run: >
+          python -m PyInstaller
+          --clean
+          --noconfirm
+          --onefile
+          --name mobile-computer-use-bridge
+          run_mobile_computer_use_bridge.py
+
+      - name: Build friendly desktop launcher
+        if: runner.os != 'Windows'
+        run: >
+          python -m PyInstaller
+          --clean
+          --noconfirm
+          --onefile
+          --name mobile-computer-use
+          run_mobile_computer_use_launcher.py
+
+      - name: Build friendly desktop launcher
+        if: runner.os == 'Windows'
+        run: >
+          python -m PyInstaller
+          --clean
+          --noconfirm
+          --onefile
+          --windowed
+          --name mobile-computer-use
+          run_mobile_computer_use_launcher.py
+
+      - name: Smoke test bridge executable
+        shell: bash
+        run: ./dist/${{ matrix.executable }} --help
+
+      - name: Package Windows artifact
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force package | Out-Null
+          Copy-Item "dist/${{ matrix.app_executable }}" "package/${{ matrix.app_executable }}"
+          Copy-Item "dist/${{ matrix.executable }}" "package/${{ matrix.executable }}"
+          Copy-Item README.md package/README.md
+          Compress-Archive -Path package/* -DestinationPath "${{ matrix.archive }}" -Force
+
+      - name: Package Unix artifact
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p package
+          cp "dist/${{ matrix.app_executable }}" "package/${{ matrix.app_executable }}"
+          cp "dist/${{ matrix.executable }}" "package/${{ matrix.executable }}"
+          cp README.md package/README.md
+          chmod +x "package/${{ matrix.app_executable }}"
+          chmod +x "package/${{ matrix.executable }}"
+          tar -czf "${{ matrix.archive }}" -C package .
+
+      - name: Upload bridge artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Download bridge artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag="v${{ github.event.inputs.version }}"
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ github.event.inputs.prerelease || 'false' }}
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+        shell: bash
+        run: |
+          prerelease_args=()
+          if [[ "${PRERELEASE}" == "true" ]]; then
+            prerelease_args+=(--prerelease)
+          fi
+
+          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            gh release upload "${TAG_NAME}" release-artifacts/* --clobber
+          else
+            gh release create "${TAG_NAME}" release-artifacts/* \
+              --target "${GITHUB_SHA}" \
+              --title "Mobile Computer Use ${TAG_NAME}" \
+              --notes "Desktop app and standalone bridge binaries for Windows, macOS, and Linux. Download the archive for your operating system, extract it, then open Mobile Computer Use for the friendly launcher or run the bridge executable directly." \
+              "${prerelease_args[@]}"
+          fi

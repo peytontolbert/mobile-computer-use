@@ -9,7 +9,21 @@ agent sessions running on your own computer.
 
 ### 1. Install The Bridge
 
-Run this on the computer you want to control:
+Download the bridge for your computer from
+[GitHub Releases](https://github.com/peytontolbert/mobile-computer-use/releases):
+
+- Windows: `mobile-computer-use-bridge-windows-x64.zip`
+- macOS Apple Silicon: `mobile-computer-use-bridge-macos-arm64.tar.gz`
+- macOS Intel: `mobile-computer-use-bridge-macos-x64.tar.gz`
+- Linux: `mobile-computer-use-bridge-linux-x64.tar.gz`
+
+Extract the archive on the computer you want to control. Open
+`mobile-computer-use` on macOS/Linux or `mobile-computer-use.exe` on Windows.
+The desktop app lets you choose a workspace, start/stop the bridge, see provider
+readiness, copy local or external URLs, approve phones, and remove trusted
+devices.
+
+Source install is still available for developers:
 
 ```bash
 python -m pip install git+https://github.com/peytontolbert/mobile-computer-use.git
@@ -37,6 +51,20 @@ You can use Codex, Cursor, or both. Cursor can also use `CURSOR_API_KEY` if that
 environment variable is set before starting the bridge.
 
 ### 3. Start The Bridge
+
+macOS/Linux:
+
+```bash
+./mobile-computer-use
+```
+
+Windows PowerShell:
+
+```powershell
+.\mobile-computer-use.exe
+```
+
+Advanced users can run the bridge directly:
 
 ```bash
 mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root
@@ -93,6 +121,7 @@ Structured guides are in [`docs/README.md`](docs/README.md):
 
 Release and iOS notes: [App Store Connect](docs/app-store-connect.md), [Xcode Cloud](docs/xcode-cloud.md), [GitHub Actions iOS](docs/github-actions-ios.md), [privacy](docs/privacy.md), [mobile release checklist](docs/mobile-release-ux-checklist.md).
 App Review notes and demo instructions are in [docs/app-review.md](docs/app-review.md).
+Desktop bridge binary release notes are in [docs/bridge-release-binaries.md](docs/bridge-release-binaries.md).
 
 ## Local Development
 

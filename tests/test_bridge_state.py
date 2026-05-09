@@ -140,6 +140,22 @@ def test_mobile_approval_requires_six_digit_code_before_prompt(isolated_config_d
         state.approve_mobile_console(state.mobile_token, device=device, approval_code="12345")
 
 
+def test_mobile_approval_can_use_desktop_approval_handler(isolated_config_dir) -> None:
+    state = BridgeState(bridge_namespace(isolated_config_dir))
+    state.desktop_approval_handler = lambda _kind, details: details["approval_code"]
+    device = {
+        "device_id": "phone_test_device_123",
+        "device_secret": "s" * MOBILE_DEVICE_SECRET_BYTES,
+        "device_name": "Test Phone",
+    }
+
+    result = state.approve_mobile_console(state.mobile_token, "30d", device, "123456")
+
+    assert result["status"] == "approved"
+    assert result["code"] == "123456"
+    assert len(state.mobile_grants) == 1
+
+
 def test_mobile_approval_creates_and_reuses_grant(monkeypatch: pytest.MonkeyPatch, isolated_config_dir) -> None:
     state = BridgeState(bridge_namespace(isolated_config_dir))
     device = {

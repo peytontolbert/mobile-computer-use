@@ -50,9 +50,15 @@
       <button id="closeHelpButton" class="iconButton" type="button" aria-label="Close bridge setup help">x</button>
     </div>
     <div class="helpBody">
-      <p>Install the bridge on the computer you want to control, then start it on a trusted network.</p>
-      <pre><code>python -m pip install git+https://github.com/peytontolbert/mobile-computer-use.git
-mobile-computer-use-bridge --host 0.0.0.0 --workspace /path/to/allowed/root</code></pre>
+      <p>Download the desktop app for Windows, macOS, or Linux from GitHub Releases, extract it, then open Mobile Computer Use.</p>
+      <pre><code>https://github.com/peytontolbert/mobile-computer-use/releases
+
+# macOS/Linux
+./mobile-computer-use
+
+# Windows PowerShell
+.\mobile-computer-use.exe</code></pre>
+      <p>The desktop app lets you pick a workspace, start the bridge, approve phones, and remove trusted devices.</p>
       <p>Install and sign in to at least one supported provider before starting the bridge.</p>
       <pre><code>npm install -g @openai/codex
 codex
