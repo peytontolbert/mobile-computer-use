@@ -14,7 +14,6 @@ Download the bridge for your computer from
 
 - Windows: `mobile-computer-use-bridge-windows-x64.zip`
 - macOS Apple Silicon: `mobile-computer-use-bridge-macos-arm64.tar.gz`
-- macOS Intel: `mobile-computer-use-bridge-macos-x64.tar.gz`
 - Linux: `mobile-computer-use-bridge-linux-x64.tar.gz`
 
 Extract the archive on the computer you want to control. Open

@@ -11,7 +11,6 @@ The `Bridge Release` GitHub Actions workflow builds and uploads:
 
 - `mobile-computer-use-bridge-windows-x64.zip`
 - `mobile-computer-use-bridge-macos-arm64.tar.gz`
-- `mobile-computer-use-bridge-macos-x64.tar.gz`
 - `mobile-computer-use-bridge-linux-x64.tar.gz`
 
 Most users should open `mobile-computer-use.exe` on Windows or

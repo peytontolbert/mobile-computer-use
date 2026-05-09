@@ -40,11 +40,6 @@ jobs:
             app_executable: mobile-computer-use
             executable: mobile-computer-use-bridge
             archive: mobile-computer-use-bridge-macos-arm64.tar.gz
-          - os: macos-13
-            label: macos-x64
-            app_executable: mobile-computer-use
-            executable: mobile-computer-use-bridge
-            archive: mobile-computer-use-bridge-macos-x64.tar.gz
           - os: ubuntu-latest
             label: linux-x64
             app_executable: mobile-computer-use
