@@ -40,9 +40,9 @@ git push origin v0.1.0
 ## User Install
 
 After downloading and extracting the archive, users open the desktop launcher.
-It lets them choose an allowed workspace folder, start or stop the bridge, see
-provider readiness, view local/LAN URLs, optionally show the external IP for
-manual port-forwarding setups, approve phones, and remove approved devices.
+It is intentionally small: Start or Stop the bridge, copy the shown URL into the
+mobile app, approve phones when the popup appears, and remove approved devices
+when needed.
 
 macOS/Linux:
 

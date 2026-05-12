@@ -18,9 +18,9 @@ Download the bridge for your computer from
 
 Extract the archive on the computer you want to control. Open
 `mobile-computer-use` on macOS/Linux or `mobile-computer-use.exe` on Windows.
-The desktop app lets you choose a workspace, start/stop the bridge, see provider
-readiness, copy local or external URLs, approve phones, and remove trusted
-devices.
+The desktop app is intentionally simple: press Start, enter the shown URL in the
+mobile app, approve phone requests when they pop up, and remove trusted devices
+when needed.
 
 Source install is still available for developers:
 
