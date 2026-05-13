@@ -20,7 +20,8 @@ For macOS and Linux, extract the download and open `mobile-computer-use`.
 
 The desktop app is intentionally simple: press Start, enter the shown URL in the
 mobile app, approve phone requests when they pop up, and remove trusted devices
-when needed.
+when needed. It also checks whether Codex and Cursor are installed and signed
+in; click Install or Login beside either provider if setup is not complete.
 
 Source install is still available for developers:
 
@@ -29,6 +30,9 @@ python -m pip install git+https://github.com/peytontolbert/mobile-computer-use.g
 ```
 
 ### 2. Install At Least One Agent Provider
+
+The desktop app can guide this setup with its Codex and Cursor buttons. Manual
+commands are:
 
 Codex:
 

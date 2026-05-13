@@ -45,7 +45,9 @@ Windows users can download `mobile-computer-use.exe` directly from the latest
 release and open it. macOS and Linux users download the archive for their
 computer, extract it, and open the desktop launcher. It is intentionally small:
 Start or Stop the bridge, copy the shown URL into the mobile app, approve phones
-when the popup appears, and remove approved devices when needed.
+when the popup appears, and remove approved devices when needed. The launcher
+also shows Codex and Cursor readiness, with Install/Login buttons when a
+provider is missing or not signed in.
 
 macOS/Linux:
 
