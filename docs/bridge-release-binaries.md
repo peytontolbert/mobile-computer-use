@@ -1,15 +1,17 @@
 # Bridge Release Binaries
 
-The desktop product is distributed as standalone binaries through GitHub
-Releases. Each archive includes a friendly launcher app plus the raw bridge CLI.
-Users still need Codex, Cursor, or tmux installed separately; these binaries
-only package this project's bridge and launcher.
+The desktop product is distributed through GitHub Releases. Windows also gets a
+direct `.exe` asset for users who should not have to understand zip files. The
+archives include the friendly launcher app plus the raw bridge CLI. Users still
+need Codex, Cursor, or tmux installed separately; these binaries only package
+this project's bridge and launcher.
 
 ## Release Artifacts
 
 The `Bridge Release` GitHub Actions workflow builds and uploads:
 
 - `mobile-computer-use-bridge-windows-x64.zip`
+- `mobile-computer-use.exe`
 - `mobile-computer-use-bridge-macos-arm64.tar.gz`
 - `mobile-computer-use-bridge-linux-x64.tar.gz`
 
@@ -39,10 +41,11 @@ git push origin v0.1.0
 
 ## User Install
 
-After downloading and extracting the archive, users open the desktop launcher.
-It is intentionally small: Start or Stop the bridge, copy the shown URL into the
-mobile app, approve phones when the popup appears, and remove approved devices
-when needed.
+Windows users can download `mobile-computer-use.exe` directly from the latest
+release and open it. macOS and Linux users download the archive for their
+computer, extract it, and open the desktop launcher. It is intentionally small:
+Start or Stop the bridge, copy the shown URL into the mobile app, approve phones
+when the popup appears, and remove approved devices when needed.
 
 macOS/Linux:
 

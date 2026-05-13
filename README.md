@@ -7,17 +7,17 @@ agent sessions running on your own computer.
 
 ## Quick Start
 
-### 1. Install The Bridge
+### 1. Download And Open The Desktop App
 
-Download the bridge for your computer from
-[GitHub Releases](https://github.com/peytontolbert/mobile-computer-use/releases):
+Download the desktop app on the computer you want to control:
 
-- Windows: `mobile-computer-use-bridge-windows-x64.zip`
-- macOS Apple Silicon: `mobile-computer-use-bridge-macos-arm64.tar.gz`
-- Linux: `mobile-computer-use-bridge-linux-x64.tar.gz`
+- [Windows: download `mobile-computer-use.exe`](https://github.com/peytontolbert/mobile-computer-use/releases/latest/download/mobile-computer-use.exe)
+- [macOS Apple Silicon: download the Mac build](https://github.com/peytontolbert/mobile-computer-use/releases/latest/download/mobile-computer-use-bridge-macos-arm64.tar.gz)
+- [Linux x64: download the Linux build](https://github.com/peytontolbert/mobile-computer-use/releases/latest/download/mobile-computer-use-bridge-linux-x64.tar.gz)
 
-Extract the archive on the computer you want to control. Open
-`mobile-computer-use` on macOS/Linux or `mobile-computer-use.exe` on Windows.
+Windows users can open `mobile-computer-use.exe` directly after downloading it.
+For macOS and Linux, extract the download and open `mobile-computer-use`.
+
 The desktop app is intentionally simple: press Start, enter the shown URL in the
 mobile app, approve phone requests when they pop up, and remove trusted devices
 when needed.

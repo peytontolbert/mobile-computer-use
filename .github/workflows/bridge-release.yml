@@ -131,6 +131,14 @@ jobs:
           path: ${{ matrix.archive }}
           if-no-files-found: error
 
+      - name: Upload direct Windows app
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-computer-use.exe
+          path: dist/${{ matrix.app_executable }}
+          if-no-files-found: error
+
   release:
     name: Publish GitHub release
     needs: build
@@ -174,6 +182,6 @@ jobs:
             gh release create "${TAG_NAME}" release-artifacts/* \
               --target "${GITHUB_SHA}" \
               --title "Mobile Computer Use ${TAG_NAME}" \
-              --notes "Desktop app and standalone bridge binaries for Windows, macOS, and Linux. Download the archive for your operating system, extract it, then open Mobile Computer Use for the friendly launcher or run the bridge executable directly." \
+              --notes "Desktop app and standalone bridge binaries for Windows, macOS, and Linux. Windows users can download mobile-computer-use.exe directly and open it. Archives are also provided for Windows, macOS, and Linux." \
               "${prerelease_args[@]}"
           fi

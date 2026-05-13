@@ -1,6 +1,6 @@
 [project]
 name = "mobile-computer-use"
-version = "0.1.1"
+version = "0.1.2"
 description = "Secure mobile control for local coding agents and tmux terminals."
 requires-python = ">=3.10"
 dependencies = [

@@ -2153,6 +2153,9 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     let startTerminalInFlight = false;
     let pendingImages = [];
     const actionDetailsOpen = new Map();
+    const scrollPositions = { list: 0, new: 0, chat: 0 };
+    let navigationRevision = 0;
+    let refreshSequence = 0;
     const statusEl = document.getElementById('status');
     const approveButton = document.getElementById('approveButton');
     const approvalDurationSelect = document.getElementById('approvalDurationSelect');
@@ -2464,7 +2467,32 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     approvalDurationSelect.addEventListener('change', () => {
       localStorage.setItem('agent-kernel-mobile-approval-duration', approvalDurationSelect.value);
     });
+    function scrollToPageBottom() {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const height = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+          window.scrollTo(0, height);
+        });
+      });
+    }
+    function rememberScrollPosition() {
+      if (mode) scrollPositions[mode] = window.scrollY || 0;
+    }
+    function restoreScrollPosition(next) {
+      if (next === 'chat') {
+        scrollToPageBottom();
+        return;
+      }
+      const target = scrollPositions[next] || 0;
+      requestAnimationFrame(() => window.scrollTo(0, target));
+    }
     function setMode(next) {
+      const previous = mode;
+      const changed = previous !== next;
+      if (changed) {
+        rememberScrollPosition();
+        navigationRevision += 1;
+      }
       mode = next;
       listView.classList.toggle('hidden', next !== 'list');
       newView.classList.toggle('hidden', next !== 'new');
@@ -2483,8 +2511,15 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
         localStorage.removeItem('agent-kernel-mobile-session');
         messages.innerHTML = '';
         sessionNameInput.value = '';
-        promptInput.focus();
       }
+      if (changed) restoreScrollPosition(next);
+      return navigationRevision;
+    }
+    function leaveChatForList() {
+      activeSessionId = '';
+      localStorage.removeItem('agent-kernel-mobile-session');
+      setMode('list');
+      refresh().catch(() => {});
     }
     function clearMobileGrant(message = 'Not approved.') {
       grantId = '';
@@ -2669,8 +2704,13 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
         }
       }
     }
-    function actionDetailKey(event) {
-      return `${activeSessionId || 'session'}:${event?.index ?? ''}:${event?.time ?? ''}`;
+    function actionDetailKey(event, model) {
+      const parsed = event?.parsed || {};
+      const item = itemFromEvent(event) || {};
+      const type = item.type || parsed.type || parsed.msg?.type || event?.stream || 'event';
+      const stableId = item.id || item.call_id || parsed.id || parsed.session_id || event?.index;
+      const fallback = firstLine(model?.summary || model?.label || event?.text || compactJson(parsed), 120);
+      return `${activeSessionId || 'session'}:${type}:${stableId ?? event?.time ?? fallback}`;
     }
     function renderEvent(event, provider = activeSessionProvider) {
       const model = messageModel(event, provider);
@@ -2680,7 +2720,7 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
       if (model.role === 'action') {
         const details = document.createElement('details');
         details.className = 'actionDetails';
-        const detailKey = actionDetailKey(event);
+        const detailKey = actionDetailKey(event, model);
         details.dataset.detailKey = detailKey;
         if (actionDetailsOpen.get(detailKey)) details.open = true;
         details.addEventListener('toggle', () => {
@@ -2721,7 +2761,8 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     }
     function renderSession(session) {
       if (!session) return;
-      const wasNearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 80;
+      const enteringChat = mode !== 'chat';
+      const wasNearBottom = enteringChat || window.innerHeight + window.scrollY >= document.body.offsetHeight - 80;
       statusEl.textContent = `Approved. ${session.status || 'session'}`;
       const provider = session.provider || 'codex';
       activeSessionProvider = provider;
@@ -2741,7 +2782,7 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
         const rendered = renderEvent(event, provider);
         if (rendered) messages.appendChild(rendered);
       }
-      if (wasNearBottom) window.setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 0);
+      if (wasNearBottom) scrollToPageBottom();
     }
     function setAllActionDetails(open) {
       for (const item of messages.querySelectorAll('.actionDetails')) {
@@ -2752,10 +2793,17 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     async function openSession(sessionId) {
       activeSessionId = sessionId;
       localStorage.setItem('agent-kernel-mobile-session', activeSessionId);
+      const revision = setMode('chat');
+      messages.innerHTML = '';
+      chatTitle.textContent = 'Loading session...';
+      topNavTitle.textContent = 'Loading...';
+      statusEl.textContent = 'Opening session...';
       try {
-        const detail = await api('/mobile/api/status', { session_id: activeSessionId, since: 0 });
+        const detail = await api('/mobile/api/status', { session_id: sessionId, since: 0 });
+        if (mode !== 'chat' || activeSessionId !== sessionId || navigationRevision !== revision) return;
         renderSession(detail);
       } catch (error) {
+        if (activeSessionId !== sessionId) return;
         activeSessionId = '';
         localStorage.removeItem('agent-kernel-mobile-session');
         statusEl.textContent = error.message || 'Session is no longer available.';
@@ -2929,6 +2977,10 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
       }
     }
     async function refresh() {
+      const refreshId = ++refreshSequence;
+      const refreshMode = mode;
+      const refreshSessionId = activeSessionId;
+      const refreshRevision = navigationRevision;
       approveButton.classList.toggle('hidden', Boolean(grantId));
       approvalDurationSelect.disabled = Boolean(grantId);
       if (!grantId && !(mobileDeviceId && mobileDeviceSecret)) {
@@ -2939,9 +2991,12 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
       try {
         payload = await api('/mobile/api/sessions');
       } catch (error) {
+        if (refreshId !== refreshSequence) return;
         clearMobileGrant(error.message || 'Approval expired. Approve this phone again.');
         return;
       }
+      if (refreshId !== refreshSequence) return;
+      if (navigationRevision !== refreshRevision) return;
       renderReadiness(payload);
       const sessions = payload.sessions || [];
       sessionList.innerHTML = '';
@@ -2975,11 +3030,13 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
       }
       renderDiscoveryRows();
       statusEl.textContent = `Approved. ${sessions.length} session${sessions.length === 1 ? '' : 's'}.`;
-      if (mode === 'chat' && activeSessionId) {
+      if (refreshMode === 'chat' && refreshSessionId) {
         try {
-          const detail = await api('/mobile/api/status', { session_id: activeSessionId, since: 0 });
+          const detail = await api('/mobile/api/status', { session_id: refreshSessionId, since: 0 });
+          if (refreshId !== refreshSequence || mode !== 'chat' || activeSessionId !== refreshSessionId || navigationRevision !== refreshRevision) return;
           renderSession(detail);
         } catch (error) {
+          if (refreshId !== refreshSequence || mode !== 'chat' || activeSessionId !== refreshSessionId || navigationRevision !== refreshRevision) return;
           activeSessionId = '';
           localStorage.removeItem('agent-kernel-mobile-session');
           statusEl.textContent = error.message || 'Session is no longer available.';
@@ -3012,10 +3069,7 @@ MOBILE_PAGE_HTML = r'''<!doctype html>
     importButton.addEventListener('click', () => importCodexSession());
     navBackButton.addEventListener('click', () => {
       if (mode === 'chat') {
-        activeSessionId = '';
-        localStorage.removeItem('agent-kernel-mobile-session');
-        setMode('list');
-        refresh();
+        leaveChatForList();
       } else {
         setMode('list');
       }
